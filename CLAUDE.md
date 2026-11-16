@@ -12,8 +12,11 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
   blocks `*.csv`, `*-export.json` and `setlist-backup-*.json` anywhere in the folder.
 - Friends-only, no $99 Apple fee: that is why it is a PWA (Add to Home Screen) and not an App Store app.
   A real iOS app without the fee can't be shared (7-day personal installs only). Don't propose it again.
-- Not published yet (2026-11-15). Publishing = public GitHub repo + GitHub Pages under `cafe100Elm`.
-  Show Jeremy what will go up and get his OK first.
+- **Live at https://cafe100elm.github.io/setlist/** (published 2026-11-15). Repo: https://github.com/cafe100Elm/setlist
+  (public; GitHub Pages serves the `main` branch root, no build). **A push to `main` goes live to Jeremy's and his
+  friends' phones within a minute or two**, so show Jeremy the change and get his OK before pushing.
+- The repo is public: keep personal details out of every committed file. Commits in this folder use the GitHub
+  no-reply address (set in this repo's git config), not Jeremy's email.
 
 ## How it's put together
 - `index.html` — shell. `css/app.css` — all styling. `sw.js` — offline copy of the app files. `manifest.webmanifest` + `icons/` — install info.
@@ -39,6 +42,10 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 - Service workers don't register in the Claude desktop preview pane; test offline in real Chrome.
 - Dark mode follows the house standard (`data-theme="dark"`, key `setlist-theme`, light by default). The rest
   of the design is deliberately its own (Jeremy: "don't constrain yourself to my other app designs").
+
+## Deploy
+- `git push` to `main`. That's all. Check https://cafe100elm.github.io/setlist/ a minute later.
+- Before any commit: `git status` must not list anything from `reference/`.
 
 ## Run / test
 - Preview: `.claude/launch.json` → "setlist" (python static server). Or `python3 -m http.server 8791` and open http://localhost:8791.
