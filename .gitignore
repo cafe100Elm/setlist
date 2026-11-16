@@ -1,0 +1,9 @@
+# Personal exports and the old app's guide. Never publish these:
+# the app ships with no one's workout history in it.
+reference/
+*.csv
+*-export.json
+setlist-backup-*.json
+
+.DS_Store
+.claude/

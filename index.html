@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Setlist</title>
+<meta name="description" content="A simple workout log that lives on your phone.">
+<meta name="theme-color" content="#f3f0e8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Setlist">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>
+  // Set the theme before the page draws: light unless this person chose dark.
+  try { if (localStorage.getItem('setlist-theme') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
+</script>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="restbar" hidden></div>
+<div id="app">
+  <header id="hdr"></header>
+  <main id="view"></main>
+</div>
+<div id="livepill"></div>
+<nav id="tabs" aria-label="Sections"></nav>
+<div id="sheets"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="tip" role="tooltip"></div>
+<input type="file" id="file" accept=".json,.csv,application/json,text/csv,text/plain" hidden>
+<noscript><p style="padding:24px">Setlist needs JavaScript turned on.</p></noscript>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
