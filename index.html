@@ -14,8 +14,11 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <script>
-  // Set the theme before the page draws: light unless this person chose dark.
-  try { if (localStorage.getItem('setlist-theme') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
+  // Set the theme before the page draws: light unless this person chose dark or system (follows the device).
+  try {
+    var t = localStorage.getItem('setlist-theme');
+    if (t === 'dark' || (t === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.theme = 'dark';
+  } catch (e) {}
 </script>
 <link rel="stylesheet" href="css/app.css">
 </head>

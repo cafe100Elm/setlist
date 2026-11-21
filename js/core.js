@@ -37,6 +37,7 @@ export const icons = {
   gear: I('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
   sun: I('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
   moon: I('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
+  screen: I('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'),
   check: I('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
   x: I('<path d="M6 6l12 12M18 6 6 18"/>'),
   dots: I('<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'),
@@ -69,12 +70,12 @@ const TITLES = {
 export function render() {
   const act = activeWorkout();
   const [kicker, title] = TITLES[ui.tab]();
-  const dark = document.documentElement.dataset.theme === 'dark';
+  const pref = themePref();
   $('#hdr').innerHTML = `
     <div class="hdr-text"><div class="kicker">${esc(kicker)}</div><h1>${esc(title)}</h1></div>
     <div class="hdr-btns">
       <button class="icon-btn" data-a="settings" aria-label="Settings and data">${icons.gear}</button>
-      <button class="icon-btn" data-a="theme" aria-label="${dark ? 'Switch to light mode' : 'Switch to dark mode'}">${dark ? icons.sun : icons.moon}</button>
+      <button class="icon-btn" data-a="theme" title="${THEME_LABEL[pref]}" aria-label="${THEME_LABEL[pref]}">${icons[THEME_ICON[pref]]}</button>
     </div>`;
   $('#view').innerHTML = views[ui.tab]();
   $('#tabs').innerHTML = TABS.map(([id, label]) => `
@@ -281,16 +282,36 @@ export async function syncWake() {
 document.addEventListener('visibilitychange', () => { syncWake(); tick(); });
 
 // ── Theme ──
+// Light → Dark → System (follows the phone's setting, live). Light unless chosen otherwise.
+// Saved as setlist-theme = light | dark | system; index.html sets it before the page draws.
+const THEME_KEY = 'setlist-theme';
+const THEME_NEXT = { light: 'dark', dark: 'system', system: 'light' };
+const THEME_ICON = { light: 'sun', dark: 'moon', system: 'screen' };
+const THEME_NAME = { light: 'Light', dark: 'Dark', system: 'System (follows your device)' };
+const THEME_LABEL = Object.fromEntries(Object.keys(THEME_NEXT).map((k) => [k, `Theme: ${THEME_NAME[k]}. Tap for ${THEME_NAME[THEME_NEXT[k]]}.`]));
+const darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function themePref() {
+  try { const v = localStorage.getItem(THEME_KEY); if (v === 'dark' || v === 'system') return v; } catch (e) { /* private mode */ }
+  return 'light';
+}
+function applyTheme() {
+  const p = themePref();
+  if (p === 'dark' || (p === 'system' && darkMQ && darkMQ.matches)) document.documentElement.dataset.theme = 'dark';
+  else delete document.documentElement.dataset.theme;
+  applyThemeColor();
+}
 export function applyThemeColor() {
   const dark = document.documentElement.dataset.theme === 'dark';
   const m = $('meta[name=theme-color]');
   if (m) m.content = dark ? '#0e0f11' : '#f3f0e8';
 }
+if (darkMQ) {
+  const onDevice = () => { if (themePref() === 'system') applyTheme(); };
+  if (darkMQ.addEventListener) darkMQ.addEventListener('change', onDevice); else if (darkMQ.addListener) darkMQ.addListener(onDevice);
+}
 on('theme', () => {
-  const dark = document.documentElement.dataset.theme === 'dark';
-  if (dark) delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = 'dark';
-  try { localStorage.setItem('setlist-theme', dark ? 'light' : 'dark'); } catch (e) { /* private mode */ }
-  applyThemeColor();
+  try { localStorage.setItem(THEME_KEY, THEME_NEXT[themePref()]); } catch (e) { /* private mode */ }
+  applyTheme();
   render();
 });
 

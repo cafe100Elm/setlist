@@ -40,7 +40,10 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 - iPhone: no vibration, and the timer can't beep while the phone is locked (web-app limits). Data is erased
   if the home-screen icon is deleted, hence the backup reminder on Home.
 - Service workers don't register in the Claude desktop preview pane; test offline in real Chrome.
-- Dark mode follows the house standard (`data-theme="dark"`, key `setlist-theme`, light by default). The rest
+- Theme follows the house standard: one header button cycles Light → Dark → System (sun / moon / screen icon = the
+  current setting); System follows the phone live. `data-theme="dark"` on `<html>`, key `setlist-theme` = light | dark |
+  system, light by default. `index.html`'s head script paints it first; `js/core.js` (Theme) owns the cycle and the live
+  device listener (added 2026-11-20). The button stays 42px to match the gear beside it. The rest
   of the design is deliberately its own (Jeremy: "don't constrain yourself to my other app designs").
 
 ## Deploy
