@@ -35,7 +35,7 @@ function list() {
 registerView('history', () => {
   if (!state.workouts.length) {
     return `<div class="empty-box"><div class="empty-ic">${icons.history}</div><h2>No workouts yet</h2><p>Each workout you finish shows up here with full set-by-set detail. Tracked somewhere else before? Bring it in.</p>
-      <div class="stack"><button class="btn primary big" data-a="go" data-tab="home">Start a workout</button><button class="btn big" data-a="import-pick">Import my history</button></div></div>`;
+      <div class="stack"><button class="btn primary big" data-a="start-now">Start a workout</button><button class="btn big" data-a="import-pick">Import my history</button></div></div>`;
   }
   const t = totals();
   return `<div class="stats three"><div><b>${num(t.workouts, 0)}</b><span>Workouts</span></div><div><b>${num(t.sets, 0)}</b><span>Sets</span></div><div><b>${abbr(t.vol)}</b><span>Lb lifted</span></div></div>

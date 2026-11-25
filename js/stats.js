@@ -38,14 +38,15 @@ export const prevSession = (exId, w) => sessions(exId).find((s) => s.w.id !== w.
 export function exSummary(exId) {
   return M('sum:' + exId, () => {
     const ss = sessions(exId);
-    let best = null, longest = null, farthest = null;
+    let best = null, longest = null, farthest = null, totalT = 0;
     for (const s of ss) for (const x of s.sets) {
+      totalT += x.t || 0;
       if (x.w && (!best || x.w > best.w || (x.w === best.w && (x.r || 0) > (best.r || 0)))) best = { w: x.w, r: x.r, at: s.at };
       if (x.t && (!longest || x.t > longest.t)) longest = { t: x.t, at: s.at };
       if (x.d && (!farthest || x.d > farthest.d)) farthest = { d: x.d, at: s.at };
     }
     const trend = ss.slice(0, 8).reverse().map((s) => Math.max(0, ...s.sets.map((x) => x.w || 0)));
-    return { count: ss.length, last: ss[0] || null, best, longest, farthest, trend };
+    return { count: ss.length, last: ss[0] || null, best, longest, farthest, totalT, trend };
   });
 }
 

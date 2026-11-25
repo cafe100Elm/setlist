@@ -2,10 +2,11 @@
 // the exercise list.
 import { state, uid, getEx, saveRoutine, deleteRoutine } from './store.js';
 import { ui, on, onInput, registerView, render, toast, confirmBox, openPad, badge, icons } from './core.js';
-import { STARTERS, AGE_SMART, AGE_SMART_WEEK, TYPES, FIELDS } from './lib.js';
+import { STARTERS, AGE_SMART, TYPES, FIELDS } from './lib.js';
 import { esc, clock, plural } from './util.js';
 import { startWorkout, routineFromTemplate } from './workout.js';
 import { openPicker, exercisesPanel } from './exercises.js';
+import { plansPanel } from './plans.js';
 
 const exName = (e) => (getEx(e.exId) || { name: e.name || 'Exercise' }).name;
 
@@ -14,7 +15,7 @@ function prescription(e) {
   const ex = getEx(e.exId);
   const s = e.sets[0] || {};
   const n = e.sets.length;
-  if (ex && ex.type === 'c') return s.t ? `${Math.round(s.t / 60)} min` : s.d ? `${s.d} mi` : `${n} set${n > 1 ? 's' : ''}`;
+  if (ex && (ex.type === 'c' || ex.type === 'tm')) return s.t ? `${Math.round(s.t / 60)} min` : s.d ? `${s.d} mi` : `${n} set${n > 1 ? 's' : ''}`;
   if (s.r) return `${n}×${s.r}`;
   if (s.t) return s.t >= 120 && n === 1 ? `${Math.round(s.t / 60)} min` : `${n}×${s.t} sec`;
   return `${n} set${n > 1 ? 's' : ''}`;
@@ -46,7 +47,7 @@ function editor() {
     ${d.exercises.length ? `<div class="draft-list">${d.exercises.map((e, i) => {
     const ex = getEx(e.exId);
     const type = ex ? ex.type : 'wr';
-    const f = type === 'c' ? 'm' : type === 't' ? 't' : type === 'wd' ? null : 'r';
+    const f = type === 'c' || type === 'tm' ? 'm' : type === 't' ? 't' : type === 'wd' ? null : 'r';
     const def = f && FIELDS[f];
     const v = def ? e.sets[0][def.key] : null;
     return `<div class="draft-ex">
@@ -79,8 +80,8 @@ function routinesPanel() {
   h += `<details class="group"${state.routines.length ? '' : ' open'}><summary><span><b>Starter templates</b><small>Six general routines to start from</small></span></summary>${STARTERS.map((t) => tplCard(t, false)).join('')}</details>`;
   h += `<details class="group"><summary><span><b>55+ Age-Smart collection</b><small>Joint-friendly strength, cardio, balance and mobility</small></span></summary>
     <div class="card">
-      <div class="sub-h">A sample week</div>
-      <div class="week">${AGE_SMART_WEEK.map(([d, t]) => `<div><b>${d}</b><span>${esc(t)}</span></div>`).join('')}</div>
+      <div class="sub-h">How to use these</div>
+      <button class="btn big" data-a="lib" data-v="plans">When to do each: see Plans →</button>
       <ul class="guide">
         <li>Strength on nonconsecutive days: at least 48 hours before working the same muscles again.</li>
         <li>Stop each set with about 2 clean reps left. Rest 60–90 seconds.</li>
@@ -97,11 +98,12 @@ function routinesPanel() {
 registerView('library', () => `
   <div class="seg" role="tablist">
     <button class="${ui.lib === 'routines' ? 'on' : ''}" data-a="lib" data-v="routines" role="tab" aria-selected="${ui.lib === 'routines'}">Routines</button>
+    <button class="${ui.lib === 'plans' ? 'on' : ''}" data-a="lib" data-v="plans" role="tab" aria-selected="${ui.lib === 'plans'}">Plans</button>
     <button class="${ui.lib === 'exercises' ? 'on' : ''}" data-a="lib" data-v="exercises" role="tab" aria-selected="${ui.lib === 'exercises'}">Exercises</button>
   </div>
-  ${ui.lib === 'routines' ? routinesPanel() : exercisesPanel()}`);
+  ${ui.lib === 'routines' ? routinesPanel() : ui.lib === 'plans' ? plansPanel() : exercisesPanel()}`);
 
-on('lib', (el) => { ui.lib = el.dataset.v; render(); });
+on('lib', (el) => { ui.lib = el.dataset.v; render(); window.scrollTo(0, 0); });
 
 const allTemplates = () => [...STARTERS, ...AGE_SMART];
 on('tpl-go', (el) => { const r = routineFromTemplate(allTemplates().find((t) => t.id === el.dataset.id)); startWorkout({ title: r.name, from: r }); });
@@ -116,7 +118,7 @@ on('routine-del', async (el) => {
 });
 
 // ── Editor ──
-const defaultSets = (ex) => (ex.type === 'c' ? [{ t: 1200, d: 1 }] : ex.type === 't' ? [{ t: 60 }] : ex.type === 'wd' ? [{}, {}] : [{ r: 10 }, { r: 10 }, { r: 10 }]);
+const defaultSets = (ex) => (ex.type === 'c' ? [{ t: 1200, d: 1 }] : ex.type === 'tm' ? [{ t: 1200 }] : ex.type === 't' ? [{ t: 60 }] : ex.type === 'wd' ? [{}, {}] : [{ r: 10 }, { r: 10 }, { r: 10 }]);
 on('draft-new', () => { ui.draft = { id: null, name: '', desc: '', exercises: [] }; render(); window.scrollTo(0, 0); });
 on('draft-edit', (el) => {
   const r = state.routines.find((x) => x.id === el.dataset.id);

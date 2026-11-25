@@ -22,11 +22,16 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 - `index.html` — shell. `css/app.css` — all styling. `sw.js` — offline copy of the app files. `manifest.webmanifest` + `icons/` — install info.
 - `js/store.js` storage · `js/lib.js` exercises, templates, name-guessing · `js/stats.js` every calculation ·
   `js/io.js` import/export · `js/core.js` frame, sheets, number pad, rest timer, theme · `js/workout.js` workout rules ·
-  one file per screen: `home`, `log`, `library` (+ `exercises`), `insights`, `history`, `settings` · `js/share.js` · `js/charts.js`.
+  one file per screen: `home`, `log`, `library` (+ `exercises`, `plans`), `insights`, `history`, `settings` · `js/share.js` · `js/charts.js`.
 - All paths are relative, so it works from a sub-folder URL (GitHub Pages) as well as a domain root.
 - A workout = `{id, title, notes, start, end, exercises:[{exId, name, sets:[{w, r, t, d, done, kind}]}]}`.
   `w` lb, `r` reps, `t` seconds (cardio shows minutes but stores seconds), `d` miles, `end: null` = in progress.
-- Exercise "type" decides the set columns: `wr` weight+reps, `r` reps, `t` seconds, `c` miles+minutes, `wd` weight+distance.
+- Exercise "type" decides the set columns: `wr` weight+reps, `r` reps, `t` seconds, `c` miles+minutes, `wd` weight+distance,
+  `tm` minutes only (added for "Matt", Jeremy's name for his mat routine: he only wants time spent).
+- **Plans** (Library → Plans, added 2026-11-25): `PLANS` in `js/lib.js` are repeating day cycles built from the routine
+  templates. Following one saves `settings.plan = { id, start }`; `js/plans.js` draws the flow diagram, the month
+  calendar (✓ = a workout was logged that day) and Home's "Today" card. Dates come from day 1, not weekdays.
+  "Push back 1 day" just moves `start`. Plans from a person's own routines are not built yet.
 
 ## Gotchas
 - **Adding a JS/CSS/icon file? Add it to the `SHELL` list in `sw.js`** or it won't work offline.
@@ -39,7 +44,9 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 - The rest timer sits at the bottom on purpose: at the top it pushed the page down right after tapping ✓.
 - iPhone: no vibration, and the timer can't beep while the phone is locked (web-app limits). Data is erased
   if the home-screen icon is deleted, hence the backup reminder on Home.
-- Service workers don't register in the Claude desktop preview pane; test offline in real Chrome.
+- The preview pane now runs the service worker, so after an edit the **first reload still shows the old files**;
+  reload twice. Offline behaviour is still best checked in real Chrome.
+- The local preview uses port 8817 (8791 collided with another project's cached page in the pane).
 - Theme follows the house standard: one header button cycles Light → Dark → System (sun / moon / screen icon = the
   current setting); System follows the phone live. `data-theme="dark"` on `<html>`, key `setlist-theme` = light | dark |
   system, light by default. `index.html`'s head script paints it first; `js/core.js` (Theme) owns the cycle and the live
@@ -51,7 +58,7 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 - Before any commit: `git status` must not list anything from `reference/`.
 
 ## Run / test
-- Preview: `.claude/launch.json` → "setlist" (python static server). Or `python3 -m http.server 8791` and open http://localhost:8791.
+- Preview: `.claude/launch.json` → "setlist" (python static server). Or `python3 -m http.server 8817` and open http://localhost:8817.
 - To load Jeremy's history in a test browser: Settings (gear) → Import workouts → pick the JSON in `reference/`.
   Expected: 220 workouts, 4,245 sets. Wipe it afterwards (Settings → Erase everything).
 
@@ -59,3 +66,4 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 - Daily calorie/weight half of the old Health Dashboard (left out on purpose; the import skips those rows).
 - Sync between devices (would need accounts + a database; today it's backup file out, import in).
 - kg / km display.
+- Build-your-own plans (a weekly schedule from saved routines).

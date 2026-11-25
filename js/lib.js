@@ -20,6 +20,7 @@ export const TYPES = {
   t: { name: 'Timed hold (seconds)', fields: ['t'] },
   c: { name: 'Distance + minutes', fields: ['d', 'm'] },
   wd: { name: 'Weight + distance', fields: ['w', 'd'] },
+  tm: { name: 'Time only (minutes)', fields: ['m'] },
 };
 
 export const FIELDS = {
@@ -128,6 +129,7 @@ const L = [
   ['treadmill-run', 'Treadmill Run', 'c', 'Cardio', 'Treadmill', 'c', 'Easy pace you could talk at, light quick steps', ['Treadmill']],
   ['treadmill-walk', 'Treadmill Incline Walk', 'c', 'Cardio', 'Treadmill', 'c', 'Raise the incline, stride naturally, hands off the rails', []],
   ['walk', 'Outdoor Walk', 'c', 'Cardio', 'None', 'c', 'Brisk pace, arms swinging, tall posture', ['Walking']],
+  ['dog-walk', 'Dog Walk', 'c', 'Cardio', 'None', 'c', 'Easy pace, and the dog sets the stops', ['Dog Walking', 'Walk the dog']],
   ['run', 'Outdoor Run', 'c', 'Cardio', 'None', 'c', 'Relaxed shoulders, quick cadence, breathe steadily', ['Running']],
   ['stationary-bike', 'Stationary Bike', 'c', 'Cardio', 'Bike', 'c', 'Seat at hip height, steady cadence, light grip', []],
   ['cycling', 'Outdoor Cycling', 'c', 'Cardio', 'Bike', 'c', 'Smooth circles, steady effort, look ahead', ['Cycling']],
@@ -157,6 +159,7 @@ const L = [
   ['thoracic-rotation', 'Thoracic Rotation', 'y', 'Spine', 'Mat', 't', 'On all fours, hand behind the head, rotate the elbow up', []],
   ['breathwork', 'Breathwork', 'y', 'Recovery', 'None', 't', 'In through the nose for four, out slowly for six', []],
   ['foam-rolling', 'Foam Rolling', 'y', 'Recovery', 'Roller', 't', 'Slow passes, pause on tight spots, keep breathing', []],
+  ['matt', 'Matt', 'y', 'Full body', 'Mat', 'tm', 'A mat routine, logged as one block of minutes', ['Mat', 'Mat routine', 'Mat work']],
   ['yoga-session', 'Yoga Session', 'y', 'Full body', 'Mat', 't', 'A full class or free practice, logged as one block', ['Yoga']],
 ];
 
@@ -206,9 +209,65 @@ export const AGE_SMART = [
     { tag: 'Recovery', mins: 30, level: 'All levels', when: 'Rest days', gear: 'Mat', why: 'Keeps hips, spine and shoulders moving freely so the strength days feel better.' }),
 ];
 
-export const AGE_SMART_WEEK = [
-  ['Mon', 'Foundation A'], ['Tue', 'Walk / Cardio'], ['Wed', 'Foundation B'], ['Thu', 'Mobility'],
-  ['Fri', 'Legs & Balance'], ['Sat', 'Cardio'], ['Sun', 'Rest / Yoga'],
+// Plans: which routine to do on which day. Each plan is a cycle of days that
+// repeats from the date the person chooses as day 1.
+//   kind: s strength · c cardio · y mobility · w walk · r rest
+const D = {
+  a: { tpl: 'as-a', label: 'Foundation A', short: 'A', kind: 's' },
+  b: { tpl: 'as-b', label: 'Foundation B', short: 'B', kind: 's' },
+  db: { tpl: 'as-db', label: 'Dumbbell Strength', short: 'DB', kind: 's' },
+  legs: { tpl: 'as-legs', label: 'Legs & Balance', short: 'Legs', kind: 's' },
+  cardio: { tpl: 'as-cardio', label: 'Cardio Engine', short: 'Cardio', kind: 'c' },
+  mob: { tpl: 'as-mobility', label: 'Mobility & Core', short: 'Mob', kind: 'y' },
+  push: { tpl: 'st-push', label: 'Push Day', short: 'Push', kind: 's' },
+  pull: { tpl: 'st-pull', label: 'Pull Day', short: 'Pull', kind: 's' },
+  leg: { tpl: 'st-legs', label: 'Leg Day', short: 'Legs', kind: 's' },
+  walk: { label: 'Easy walk', short: 'Walk', kind: 'w', mins: 25 },
+  rest: { label: 'Rest', short: 'Rest', kind: 'r' },
+};
+export const PLANS = [
+  {
+    id: 'p-55-ab', name: '55+ Foundation A / B', tag: 'Start here',
+    desc: 'Two full-body strength days a week, with easy walks between them. The simplest way to use Foundation A and B.',
+    how: [
+      'Foundation A on day 1 and Foundation B on day 3, every week. That leaves at least 48 hours before the same muscles work again.',
+      'Walk days are easy: 20 to 30 minutes at a pace where you can still talk. A dog walk counts.',
+      'One mobility day keeps hips, spine and shoulders moving. The last day is a full rest.',
+      'Stay with it for four to six weeks. When every set feels steady, move up to the 55+ Full week.',
+    ],
+    cycle: [D.a, D.walk, D.b, D.walk, D.mob, D.walk, D.rest],
+  },
+  {
+    id: 'p-55-week', name: '55+ Full week',
+    desc: 'The whole collection across seven days: three strength days, two cardio days, one mobility day and one rest day.',
+    how: [
+      'Strength on days 1, 3 and 5 (Foundation A, Foundation B, Legs & Balance), always with a day between.',
+      'Cardio on days 2 and 6. Swap the machine circuit for a brisk walk any time.',
+      'Mobility on day 4 and a full rest on day 7. Gentle yoga on the rest day is fine.',
+      'Add a short daily walk to reach the 150 minutes of cardio a week the guidelines suggest.',
+    ],
+    cycle: [D.a, D.cardio, D.b, D.mob, D.legs, D.cardio, D.rest],
+  },
+  {
+    id: 'p-55-home', name: '55+ Home week',
+    desc: 'For weeks without a gym: dumbbells twice, walks and a mat session in between.',
+    how: [
+      'Dumbbell Strength on day 1 and day 4: twice a week with two days between.',
+      'Walk on the days after strength, and do the mat session on day 3.',
+      'If the dumbbells start to feel light for every set, go up one size on the big lifts first.',
+    ],
+    cycle: [D.db, D.walk, D.mob, D.db, D.walk, D.walk, D.rest],
+  },
+  {
+    id: 'p-ppl', name: 'Push / Pull / Legs',
+    desc: 'Three lifting days a week, each muscle group once.',
+    how: [
+      'Push on day 1, Pull on day 3, Legs on day 5.',
+      'The days between are rest. A walk or some easy cardio is welcome but optional.',
+      'Add weight only when every set reaches its target reps with good form.',
+    ],
+    cycle: [D.push, D.rest, D.pull, D.rest, D.leg, D.rest, D.rest],
+  },
 ];
 
 // Guess a muscle group from an exercise name (used for imported exercises

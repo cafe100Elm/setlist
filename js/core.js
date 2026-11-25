@@ -170,7 +170,7 @@ const padRead = () => {
   v.classList.toggle('empty', pad.buf === '');
   $('#pad-clear').hidden = pad.buf === '';
 };
-export function openPad({ title, sub, field, value, onDone }) {
+export function openPad({ title, sub, field, value, onDone, extra = [] }) {
   const def = FIELDS[field];
   pad = { def, buf: value == null ? '' : String(num(value, 2)).replace(/,/g, ''), fresh: true, onDone };
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', def.dec ? '.' : '', '0', '⌫'];
@@ -179,6 +179,7 @@ export function openPad({ title, sub, field, value, onDone }) {
     html: `
       <div class="pad-head"><div><b>${esc(title)}</b><span>${esc(sub || def.label)}</span></div><button class="btn sm" data-a="sheet-close">Cancel</button></div>
       <div class="pad-read"><span id="pad-val"></span><small>${def.unit}</small><button class="link" id="pad-clear" data-a="pad-clear">Clear</button></div>
+      ${extra.length ? `<div class="pad-chips">${extra.map((c) => `<button data-a="pad-chip" data-v="${c.v}">${esc(c.label)}</button>`).join('')}</div>` : ''}
       ${def.chips.length ? `<div class="pad-chips">${def.chips.map((c) => `<button data-a="pad-chip" data-v="${c}">${c}</button>`).join('')}</div>` : ''}
       <div class="pad-step"><button data-a="pad-step" data-d="-1">− ${def.step}</button><button data-a="pad-step" data-d="1">+ ${def.step}</button></div>
       <div class="pad-keys">${keys.map((k) => (k ? `<button data-a="pad-key" data-k="${k}"${k === '⌫' ? ' aria-label="Backspace"' : ''}>${k}</button>` : '<span></span>')).join('')}</div>

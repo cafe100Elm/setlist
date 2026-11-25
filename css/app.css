@@ -437,3 +437,37 @@ h4 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ── Plans: flow diagram + calendar ── */
+.k-s { --k: var(--accent); } .k-c { --k: var(--c-c); } .k-y { --k: var(--c-y); } .k-w { --k: var(--c-b); } .k-r { --k: var(--muted); }
+.plan-today { border-left: 5px solid var(--k, var(--accent)); gap: 8px; }
+.plan-today .kicker { color: var(--k, var(--accent)); }
+.following { gap: 12px; }
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px 0; }
+.fnode { flex: 0 0 calc((100% - 42px) / 3); min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 8px 7px; border-radius: 12px; background: color-mix(in srgb, var(--k) 12%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--k) 45%, transparent); }
+.fnode.k-r { border-style: dashed; background: transparent; }
+.fnode.now { border-color: var(--k); box-shadow: 0 0 0 2px color-mix(in srgb, var(--k) 30%, transparent); }
+.fnode small { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--k); }
+.fnode b { font-size: 12px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.fnode span { font-size: 11px; color: var(--muted); }
+.farrow { flex: 0 0 14px; font-size: 12px; display: grid; place-items: center; font-style: normal; font-weight: 800; color: var(--muted); }
+.floop { flex: 1; min-width: 0; display: grid; place-items: center; text-align: center; padding: 8px; border-radius: 12px; font-size: 12.5px; font-weight: 800; color: var(--muted); border: 1.5px dashed var(--line); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; }
+.cal-head b { font-size: 16px; font-weight: 800; }
+.cal-head .icon-btn { font-size: 24px; line-height: 1; color: var(--ink); text-align: center; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-dow { text-align: center; font-size: 10.5px; font-weight: 800; color: var(--muted); padding-bottom: 2px; }
+.cday { position: relative; min-height: 50px; padding: 4px 1px 5px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; background: color-mix(in srgb, var(--k) 13%, var(--surface)); border: 1.5px solid transparent; overflow: hidden; }
+.cday.k-r, .cday.off { background: var(--raised); }
+.cday i { font-style: normal; font-size: 13px; font-weight: 700; }
+.cday span { font-size: 9.5px; font-weight: 800; color: var(--k); line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cday em, .kcheck { font-style: normal; font-size: 10px; font-weight: 900; color: var(--done); }
+.cday em { position: absolute; top: 1px; right: 3px; }
+.cday.today i { background: var(--ink); color: var(--bg); border-radius: 999px; min-width: 21px; padding: 0 4px; }
+.cday.sel { border-color: var(--ink); }
+.cal-detail { background: var(--raised); border-radius: 13px; padding: 11px 12px; display: flex; flex-direction: column; gap: 4px; }
+.cal-detail small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+.cal-detail b { font-size: 16.5px; font-weight: 800; }
+.cal-detail .link { text-align: left; white-space: normal; }
+.kdot { width: 10px; height: 10px; border-radius: 3px; background: var(--k); display: inline-block; }
+details.group > summary .tag { vertical-align: 2px; margin-left: 4px; }

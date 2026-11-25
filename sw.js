@@ -8,7 +8,7 @@ const CACHE = 'setlist-v1';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/core.js', 'js/store.js', 'js/lib.js', 'js/util.js', 'js/stats.js', 'js/io.js', 'js/charts.js',
-  'js/workout.js', 'js/exercises.js', 'js/share.js', 'js/log.js', 'js/home.js', 'js/library.js', 'js/insights.js', 'js/history.js', 'js/settings.js',
+  'js/workout.js', 'js/exercises.js', 'js/share.js', 'js/log.js', 'js/home.js', 'js/library.js', 'js/insights.js', 'js/history.js', 'js/settings.js', 'js/plans.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png',
 ];
 

@@ -11,7 +11,7 @@ const RANGES = [['12w', '12W'], ['6m', '6M'], ['1y', '1Y'], ['all', 'All']];
 registerView('insights', () => {
   if (!state.workouts.length) {
     return `<div class="empty-box"><div class="empty-ic">${icons.insights}</div><h2>Your numbers will appear here</h2><p>Volume trends, a consistency calendar, strength progress for every lift, and your personal records, as soon as you log a workout.</p>
-      <button class="btn primary big" data-a="go" data-tab="home">Start a workout</button></div>`;
+      <button class="btn primary big" data-a="start-now">Start a workout</button></div>`;
   }
   const t = totals();
   const s = series(ui.range);

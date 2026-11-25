@@ -4,7 +4,7 @@ import { ui, on, onInput, onChange, onSubmit, openSheet, closeSheet, render, go,
 import { CATS, CAT_ORDER, TYPES, norm } from './lib.js';
 import { exSummary, progress, sessions } from './stats.js';
 import { lineChart } from './charts.js';
-import { esc, num, clock, fmtDate, fmtShort, fmtSets, plural } from './util.js';
+import { esc, num, clock, mins, fmtDate, fmtShort, fmtSets, plural } from './util.js';
 import { addExercise } from './workout.js';
 
 const DEFAULT_TYPE = { m: 'wr', f: 'wr', b: 'r', c: 'c', y: 't' };
@@ -14,8 +14,9 @@ export function filterExercises(q, cat) {
   const words = norm(q).split(' ').filter(Boolean);
   return allExercises()
     .filter((e) => (cat === 'all' || e.cat === cat) && words.every((wd) => norm(`${e.name} ${e.muscle} ${e.equip} ${(e.aka || []).join(' ')}`).includes(wd)))
-    .map((e) => ({ e, n: sessions(e.id).length }))
-    .sort((a, b) => b.n - a.n || a.e.name.localeCompare(b.e.name));
+    .map((e) => ({ e, n: sessions(e.id).length, first: words.length && norm(e.name).startsWith(words[0]) ? 1 : 0 }))
+    // names that start with what was typed come first, then most-used
+    .sort((a, b) => b.first - a.first || b.n - a.n || a.e.name.localeCompare(b.e.name));
 }
 
 export const catPills = (active, action) => `<div class="pills">
@@ -132,7 +133,7 @@ export function openExercise(id) {
   const figs = [];
   figs.push(['Sessions', num(sum.count, 0)]);
   if (sum.best) figs.push(['Best', `${num(sum.best.w)}${sum.best.r ? ' × ' + sum.best.r : ''}`]);
-  else if (sum.longest) figs.push(['Longest', clock(sum.longest.t)]);
+  else if (sum.longest) { figs.push(['Longest', clock(sum.longest.t)]); figs.push(['Total time', mins(sum.totalT * 1000)]); }
   if (sum.farthest && !sum.best) figs.push(['Farthest', `${num(sum.farthest.d, 2)} mi`]);
   figs.push(['Last done', sum.last ? fmtDate(sum.last.at) : 'Never']);
   openSheet({

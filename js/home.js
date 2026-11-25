@@ -6,6 +6,7 @@ import { totals, series, prs, cardio, wVol, wSets } from './stats.js';
 import { barChart } from './charts.js';
 import { esc, num, abbr, clock, fmtDate, plural, isStandalone, isIOS, isAndroid } from './util.js';
 import { startWorkout, routineFromTemplate } from './workout.js';
+import { planToday } from './plans.js';
 
 export const workoutRow = (w) => {
   const cats = [...new Set(w.exercises.map((e) => exOf(e).cat))].slice(0, 4);
@@ -30,6 +31,8 @@ registerView('home', () => {
     <div><b>${t.streak}<small>d</small></b><span>Streak</span></div>
     <div><b>${abbr(t.vol)}</b><span>Lb lifted</span></div>
   </div>`;
+
+  h += planToday();
 
   // Start
   h += `<section class="card start">`;

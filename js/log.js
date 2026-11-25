@@ -65,8 +65,8 @@ registerView('log', () => {
   const w = current();
   if (!w) {
     const last = state.workouts[0];
-    return `<div class="empty-box"><div class="empty-ic">${icons.log}</div><h2>No workout open</h2><p>Start one from Home, or open any past workout from History to review it here.</p>
-      <div class="stack"><button class="btn primary big" data-a="go" data-tab="home">Start a workout</button>${last ? `<button class="btn big" data-a="open-workout" data-id="${last.id}">Open my last workout</button>` : ''}</div></div>`;
+    return `<div class="empty-box"><div class="empty-ic">${icons.log}</div><h2>No workout open</h2><p>Start an empty workout and add exercises as you go, or begin from one of your routines.</p>
+      <div class="stack"><button class="btn primary big" data-a="start-now">Start an empty workout</button><button class="btn big" data-a="go" data-tab="library" data-lib="routines">Choose a routine</button>${last ? `<button class="btn big" data-a="open-workout" data-id="${last.id}">Open my last workout</button>` : ''}</div></div>`;
   }
   const live = !w.end;
   const vol = wVol(w), sets = wSets(w);
@@ -108,6 +108,7 @@ onChange('w-title', (el) => { const w = current(); const v = el.value.trim(); if
 onChange('w-notes', (el) => { const w = current(); if (w) { w.notes = el.value.trim(); saveWorkout(w); } });
 
 on('open-workout', (el) => { ui.openId = el.dataset.id; go('log'); });
+on('start-now', () => startWorkout({}));
 
 on('cell', (el) => {
   const { w, we, s, ex } = ctx(el);
@@ -115,8 +116,12 @@ on('cell', (el) => {
   const si = +el.dataset.si;
   const g = ghosts(w, we)[si][def.key];
   const start = s[def.key] ?? g;
+  // For minutes, offer the time since this workout began as a one-tap answer
+  const extra = [];
+  const since = Math.round((Date.now() - w.start) / 60000);
+  if (f === 'm' && since >= 1) extra.push({ label: `Time since I started: ${since} min`, v: since });
   openPad({
-    title: `${ex.name} · Set ${si + 1}`, field: f, value: start == null ? null : start / sc,
+    title: `${ex.name} · Set ${si + 1}`, field: f, extra, value: start == null ? null : start / sc,
     onDone: (v) => { s[def.key] = v == null ? null : Math.round(v * sc * 100) / 100; saveWorkout(w); render(); },
   });
 });
