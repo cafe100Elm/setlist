@@ -1,9 +1,11 @@
 // Offline helper. Keeps a copy of the app's own files on the device so Setlist
 // opens with no signal. It never stores or sends anyone's workouts.
 //
-// How updates reach people: every time the app opens with a connection, each
-// file is re-checked in the background and the saved copy replaced if it
-// changed. The new version shows the next time the app is opened.
+// How updates reach people: the app always opens from the saved copy. A few
+// seconds after it opens with a connection, every file is checked in the
+// background. Only if ALL of them download does the saved copy get replaced,
+// in one go, so a dropped signal can never leave a half-old, half-new app.
+// The new version shows the next time the app is opened.
 const CACHE = 'setlist-v1';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
@@ -13,6 +15,7 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
+  // addAll is all-or-nothing: if any file fails, nothing is saved
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
@@ -27,25 +30,41 @@ async function announceUpdate() {
   for (const c of await self.clients.matchAll()) c.postMessage({ type: 'update' });
 }
 
+const stamp = (res) => res.headers.get('etag') || res.headers.get('last-modified');
+let lastCheck = 0;
+async function refreshAll() {
+  if (Date.now() - lastCheck < 60000) return;
+  lastCheck = Date.now();
+  // let the page that just opened finish loading from the saved copy first
+  await new Promise((r) => setTimeout(r, 4000));
+  // download everything; any failure throws and leaves the saved copy untouched
+  const fresh = await Promise.all(SHELL.map(async (u) => {
+    const res = await fetch(new Request(u, { cache: 'no-cache' }));
+    if (!res.ok) throw new Error('could not fetch ' + u);
+    return { u, body: await res.blob(), headers: res.headers, stamp: stamp(res) };
+  }));
+  const cache = await caches.open(CACHE);
+  let changed = false;
+  for (const f of fresh) {
+    const old = await cache.match(f.u);
+    const same = old && (f.stamp && stamp(old) ? stamp(old) === f.stamp : (await old.clone().blob()).size === f.body.size);
+    if (!same) { changed = true; break; }
+  }
+  if (!changed) return;
+  // everything is already in memory, so this swap is instant and needs no network
+  await Promise.all(fresh.map((f) => cache.put(f.u, new Response(f.body, { headers: f.headers }))));
+  announceUpdate();
+}
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/reference/')) return;
+  if (req.mode === 'navigate') e.waitUntil(refreshAll().catch(() => { lastCheck = 0; }));
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req, { ignoreSearch: true });
-    const fresh = fetch(req, { cache: 'no-cache' }).then(async (res) => {
-      if (res.ok && res.type === 'basic') {
-        if (cached) {
-          const a = cached.headers.get('etag') || cached.headers.get('last-modified');
-          const b = res.headers.get('etag') || res.headers.get('last-modified');
-          if (a && b && a !== b) announceUpdate();
-        }
-        await cache.put(req, res.clone());
-      }
-      return res;
-    }).catch(() => null);
-    if (cached) { e.waitUntil(fresh); return cached; }
-    return (await fresh) || new Response('Offline', { status: 503, statusText: 'Offline' });
+    if (cached) return cached;
+    try { return await fetch(req); } catch (err) { return new Response('Offline', { status: 503, statusText: 'Offline' }); }
   })());
 });
