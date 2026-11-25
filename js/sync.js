@@ -18,6 +18,9 @@
 //  - Two devices that each imported the same history have the same workouts under
 //    different ids. Those are recognised as twins (same title and start minute)
 //    and merged, so signing in a second device doesn't double the log.
+//  - Who may sync: people who have been let in (firebase/firestore.rules). Someone
+//    who signs in before that waits ("waiting"): they can ask to follow a friend
+//    (js/social.js), and sync starts by itself the moment a friend accepts.
 import { state, DEFAULTS, onLocalChange, putRaw, dropRaw, afterSync, saveSync, saveSettings, getEx } from './store.js';
 import { norm } from './lib.js';
 import * as cloud from './cloud.js';
@@ -28,19 +31,22 @@ const LOCAL_ONLY = ['lastBackup', 'backupNudge']; // about this device, not the 
 const OVERLAP = 5 * 60000; // re-check the last few minutes on every start, to be safe
 const BATCH = 200;
 
-// off | starting | live | offline | signin (was on, needs signing in again) | tap (sign-in window was blocked) | denied | error
+// off | starting | live | offline | signin (was on, needs signing in again) | tap (sign-in window was blocked)
+// | waiting (signed in, not let in yet) | error
 let phase = 'off';
 let note = '';
-let user = null; // { uid, email } while signed in
+let user = null; // { uid, email, name } while signed in
+let memberWatch = null;
 let authWatch = null, firstAuth = null;
 let unsubs = [];
 let ready = {}; // list → the server has answered
 let seen = {}; // list → ids the server has, while checking everything
 let flushing = false, flushTimer = 0, saveTimer = 0, retryTimer = 0, emitTimer = 0;
-const listeners = { status: [], data: [] };
+const listeners = { status: [], data: [], leave: [] };
 
 export const onSyncStatus = (fn) => listeners.status.push(fn);
 export const onSyncData = (fn) => listeners.data.push(fn);
+export const onSyncLeave = (fn) => listeners.leave.push(fn); // called just before signing out
 
 function meta() {
   const m = state.sync;
@@ -60,10 +66,14 @@ function queueFlush(ms = 2500) { clearTimeout(flushTimer); flushTimer = setTimeo
 export function syncInfo() {
   const m = state.sync || {};
   return {
-    available: cloud.configured(), on: !!m.on, phase, note, email: m.email || '',
+    available: cloud.configured(), on: !!m.on, wait: !!m.wait, phase, note, email: m.email || '',
     pending: Object.keys(m.out || {}).length, last: m.last || 0, online: navigator.onLine !== false,
   };
 }
+// Who is signed in right now ({ uid, email, name }), or null. Following uses this.
+export const syncUser = () => user;
+// Let in, and the cloud has confirmed it at least once.
+export const isMember = () => !!(user && state.sync.on && (state.sync.last || phase === 'live'));
 
 // The settings that travel between devices, as text (keys in a fixed order so two copies compare equal).
 function settingsDoc() {
@@ -293,28 +303,40 @@ function listenFailed(err) {
   clearTimeout(retryTimer);
   retryTimer = setTimeout(() => { if (user && state.sync.on) startListening(); }, 30000);
 }
-// Signed in with an account that isn't on the invite list.
+// Signed in, but not let in yet: stay signed in (so they can ask to follow a
+// friend) and wait. Sync starts by itself once a friend accepts.
 function denied() {
   stopListening();
-  state.sync = { on: false };
+  if (!user) return;
+  state.sync = { on: false, wait: true, uid: user.uid, email: user.email };
   saveSync();
-  user = null;
-  cloud.signOut().catch(() => {});
-  setPhase('denied', "That Google account isn't set up for sync. Sync is by invitation for now; everything still works on this device.");
+  setPhase('waiting');
+  const uid = user.uid;
+  if (memberWatch) return;
+  memberWatch = cloud.watchOne('members/' + uid, (d) => {
+    if (!d || !user || user.uid !== uid) return;
+    stopMemberWatch();
+    letIn(user);
+  }, () => stopMemberWatch());
+}
+function stopMemberWatch() { if (memberWatch) { try { memberWatch(); } catch (e) { /* already stopped */ } memberWatch = null; } }
+function letIn(u) {
+  const m = meta();
+  if (m.uid !== u.uid || !m.on) state.sync = { on: true, uid: u.uid, email: u.email, out: {}, cur: {}, alias: {}, dead: {}, setU: 0, setSnap: settingsDoc(), last: 0 };
+  else m.email = u.email;
+  saveSync();
+  startListening();
 }
 
 function onUser(u) {
   stopListening();
+  stopMemberWatch();
   user = u;
   if (!u) {
-    if (phase !== 'denied' && phase !== 'tap') setPhase(state.sync.on ? 'signin' : 'off');
+    if (phase !== 'tap') setPhase(state.sync.on || state.sync.wait ? 'signin' : 'off');
     return;
   }
-  const m = meta();
-  if (m.uid !== u.uid) state.sync = { on: true, uid: u.uid, email: u.email, out: {}, cur: {}, alias: {}, dead: {}, setU: 0, setSnap: settingsDoc(), last: 0 };
-  else { m.on = true; m.email = u.email; }
-  saveSync();
-  startListening();
+  letIn(u); // if they aren't let in yet the cloud says no, and denied() takes over
 }
 function watch() {
   if (!firstAuth) firstAuth = new Promise((res) => { authWatch = cloud.onUser((u) => { onUser(u); res(); }); });
@@ -330,10 +352,10 @@ async function connect() {
     return;
   }
   await watch();
-  if (!user && phase === 'starting') setPhase(state.sync.on ? 'signin' : 'off');
+  if (!user && phase === 'starting') setPhase(state.sync.on || state.sync.wait ? 'signin' : 'off');
 }
 function wake() {
-  if (!state.sync.on) return;
+  if (!state.sync.on && !state.sync.wait) return;
   if (!user) { if (phase !== 'starting') connect(); } else flush();
 }
 
@@ -360,7 +382,9 @@ export function signIn() {
 
 // Stops syncing on this device. The log stays here, and the cloud copy is left as it is.
 export async function signOutSync() {
+  for (const fn of listeners.leave) fn();
   stopListening();
+  stopMemberWatch();
   clearTimeout(flushTimer); clearTimeout(retryTimer);
   state.sync = { on: false };
   user = null;
@@ -371,8 +395,9 @@ export async function signOutSync() {
 
 // Compare everything on this device with everything in the cloud, both ways.
 export function syncNow() {
-  if (!state.sync.on) return;
+  if (!state.sync.on && !state.sync.wait) return;
   if (!user) { connect(); return; }
+  if (state.sync.wait) { letIn(user); return; } // ask again whether we've been let in
   meta().cur = {};
   startListening();
 }
@@ -382,5 +407,5 @@ export function initSync() {
   if (!cloud.configured()) return;
   window.addEventListener('online', wake);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); else if (user) flush(); });
-  if (state.sync.on || cloud.returning()) connect();
+  if (state.sync.on || state.sync.wait || cloud.returning()) connect();
 }

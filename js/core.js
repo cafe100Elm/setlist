@@ -15,6 +15,7 @@ export const ui = {
   range: '12w', progEx: null, prAll: false,
   histN: 20, histQ: '',
   draft: null, // routine being created or edited
+  friendsDot: null, // set by js/friends.js: () => true when someone is waiting to be accepted
   rest: null, // { end, total }
 };
 
@@ -45,6 +46,7 @@ export const icons = {
   plus: I('<path d="M12 5v14M5 12h14"/>'),
   back: I('<path d="M15 5l-7 7 7 7"/>'),
   search: I('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'),
+  people: I('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.2A6.5 6.5 0 0 1 21.5 20"/>'),
 };
 
 const SHAPES = {
@@ -60,20 +62,23 @@ export const badge = (cat) => `<span class="badge b-${cat}">${catIcon(cat)}${esc
 // ── Frame ──
 const TABS = [['home', 'Home'], ['log', 'Workout'], ['library', 'Library'], ['insights', 'Insights'], ['history', 'History']];
 const TITLES = {
-  home: () => [new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }), 'Setlist'],
+  home: () => [new Date().toLocaleDateString('en-US', { weekday: 'long', month: cloudBtn() ? 'short' : 'long', day: 'numeric' }), 'Setlist'], // short month leaves room for the Friends button
   log: () => ['Training', 'Workout'],
   library: () => ['Routines & exercises', 'Library'],
   insights: () => ['Your numbers', 'Insights'],
   history: () => ['Every workout', 'History'],
 };
 
+const cloudBtn = () => !!ui.friendsDot; // the Friends button shows only where sign-in is set up
 export function render() {
   const act = activeWorkout();
+  const cloudOn = cloudBtn();
   const [kicker, title] = TITLES[ui.tab]();
   const pref = themePref();
   $('#hdr').innerHTML = `
     <div class="hdr-text"><div class="kicker">${esc(kicker)}</div><h1>${esc(title)}</h1></div>
     <div class="hdr-btns">
+      ${cloudOn ? `<button class="icon-btn${ui.friendsDot && ui.friendsDot() ? ' has-dot' : ''}" data-a="friends" aria-label="Friends">${icons.people}</button>` : ''}
       <button class="icon-btn" data-a="settings" aria-label="Settings and data">${icons.gear}</button>
       <button class="icon-btn" data-a="theme" title="${THEME_LABEL[pref]}" aria-label="${THEME_LABEL[pref]}">${icons[THEME_ICON[pref]]}</button>
     </div>`;

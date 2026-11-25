@@ -1,17 +1,96 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Who may sync is a list of Google account emails kept in the database
-    // itself (config/access -> emails), so no one's address is in this public
-    // file. Only the project owner can edit that list, from the Firebase console.
-    function invited() {
-      return request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email in get(/databases/$(database)/documents/config/access).data.emails;
+    // ── Who is who ──
+    // signedIn: anyone signed in with a Google account. On its own this opens
+    //   almost nothing: a name card, and asking someone to let you follow them.
+    // member: someone who has been let in. Either they are on the owner's list
+    //   (config/access -> emails, kept in the database so no address is in this
+    //   public file), or an existing member accepted their request to follow
+    //   (which creates members/{their id}). Members get a private space for
+    //   their own log (sync) and can be followed.
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
     }
-    // Each person can read and write only their own log.
+    function invited() {
+      return request.auth.token.email in get(/databases/$(database)/documents/config/access).data.emails;
+    }
+    function vouched() {
+      return exists(/databases/$(database)/documents/members/$(request.auth.uid));
+    }
+    function member() {
+      return signedIn() && (invited() || vouched());
+    }
+    // True when the person asking has been approved as a follower of {uid}.
+    function follows(uid) {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid)).data.st == 'ok';
+    }
+    function shortText(v, max) {
+      return v is string && v.size() >= 1 && v.size() <= max;
+    }
+
+    // A member lets someone else in by accepting their follow request.
+    match /members/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create, update: if member()
+        && request.resource.data.keys().hasOnly(['by', 'at'])
+        && request.resource.data.by == request.auth.uid;
+    }
+
+    // Short follow codes (the "ABC234" in an invite link) → whose code it is.
+    // Looked up one at a time; never listed. A code can't be changed or reused.
+    match /codes/{code} {
+      allow get: if signedIn();
+      allow create: if member()
+        && code.matches('^[A-Z2-9]{6}$')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Name card: the name shown to people you follow or who follow you.
+    match /profiles/{uid} {
+      allow get: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'code', 'u'])
+        && shortText(request.resource.data.name, 40)
+        && (!('code' in request.resource.data) || shortText(request.resource.data.code, 8));
+    }
+
+    // Each member can read and write only their own space: their log, routines,
+    // settings, the list of who follows them, and the workouts they publish.
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid && invited();
+      allow read, write: if request.auth.uid == uid && member();
+    }
+
+    // Who I follow (or have asked to). Mine alone; allowed before being let in,
+    // so a newcomer's request is remembered.
+    match /users/{uid}/following/{other} {
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'at'])
+        && shortText(request.resource.data.name, 40);
+    }
+
+    // Who follows {uid}. A follower may only ASK (st = 'req'), look at their own
+    // request, and withdraw it. Only {uid} can approve it (rule above).
+    match /users/{uid}/followers/{f} {
+      allow get, delete: if signedIn() && request.auth.uid == f;
+      allow create: if signedIn() && request.auth.uid == f && f != uid
+        && request.resource.data.keys().hasOnly(['name', 'st', 'at'])
+        && request.resource.data.st == 'req'
+        && shortText(request.resource.data.name, 40);
+    }
+
+    // The finished workouts {uid} publishes. Approved followers can read them,
+    // and can add or remove their own cheer (ch.{their id}) and nothing else.
+    match /users/{uid}/feed/{wid} {
+      allow read: if follows(uid);
+      allow update: if follows(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ch'])
+        && request.resource.data.ch.diff(resource.data.get('ch', {})).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.ch.get(request.auth.uid, 'x') is string
+        && request.resource.data.ch.get(request.auth.uid, 'x').size() <= 40;
     }
     // Everything else, including config/access, is closed to the app.
   }

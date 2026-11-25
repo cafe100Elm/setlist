@@ -9,6 +9,8 @@
 // Each document is { u, del, d, s }:
 //   u = when it last changed on a device (newest wins), del = it was deleted,
 //   d = the item itself as text, s = when the server received it.
+// Following (js/social.js) adds a few small shared documents; the plain
+// helpers at the bottom of this file read and write those.
 import cfg from './firebase-config.js';
 
 const V = '11.0.2';
@@ -26,13 +28,17 @@ export function init() {
       fa = au; fs = st;
       auth = fa.getAuth(app);
       db = fs.getFirestore(app);
+      if (cfg.emulator) { // local testing only: a pretend cloud on this computer (see CLAUDE.md)
+        fa.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+        fs.connectFirestoreEmulator(db, '127.0.0.1', 8080);
+      }
     })().catch((e) => { loading = null; throw e; });
   }
   return loading;
 }
 
-// Calls back with { uid, email } when signed in, or null when not.
-export const onUser = (cb) => fa.onAuthStateChanged(auth, (u) => cb(u ? { uid: u.uid, email: u.email || '' } : null));
+// Calls back with { uid, email, name } when signed in, or null when not.
+export const onUser = (cb) => fa.onAuthStateChanged(auth, (u) => cb(u ? { uid: u.uid, email: u.email || '', name: u.displayName || '' } : null));
 
 // Opens Google's small sign-in window. If the browser can't or won't (and `mayLeave` allows it), goes to
 // Google's page instead and comes back; a note is left so the app finishes the sign-in when it reopens.
@@ -85,4 +91,23 @@ export async function write(uid, items) {
     batch.set(fs.doc(db, 'users', uid, it.list, it.id), { u: it.u, del: !!it.del, d: it.del ? '' : it.d, s: fs.serverTimestamp() });
   }
   await batch.commit();
+}
+
+// ── Plain helpers for the small shared documents that following uses ──
+// A path is written like 'users/abc/followers/def'.
+const ref = (path) => fs.doc(db, ...path.split('/'));
+export async function getOne(path) { const s = await fs.getDoc(ref(path)); return s.exists() ? s.data() : null; }
+export const put = (path, data, merge) => fs.setDoc(ref(path), data, merge ? { merge: true } : {});
+export const patch = (path, data) => fs.updateDoc(ref(path), data);
+// Change one field inside a map (keys = the way down to it), leaving the rest alone.
+export const patchIn = (path, keys, value) => fs.updateDoc(ref(path), new fs.FieldPath(...keys), value);
+export const remove = (path) => fs.deleteDoc(ref(path));
+export const gone = () => fs.deleteField(); // "take this field out"
+// Watch one document: cb(data or null).
+export const watchOne = (path, cb, onErr) => fs.onSnapshot(ref(path), (s) => cb(s.exists() ? s.data() : null), onErr);
+// Watch a list: cb([{ id, ...data }]). With `order`, newest first by that field, at most `limit`.
+export function watchAll(path, { order, limit } = {}, cb, onErr) {
+  let q = fs.collection(db, ...path.split('/'));
+  if (order) q = fs.query(q, fs.orderBy(order, 'desc'), fs.limit(limit || 20));
+  return fs.onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })), !snap.metadata.fromCache), onErr);
 }

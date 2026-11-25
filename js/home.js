@@ -8,6 +8,7 @@ import { esc, num, abbr, clock, fmtDate, plural, isStandalone, isIOS, isAndroid 
 import { startWorkout, routineFromTemplate } from './workout.js';
 import { planToday } from './plans.js';
 import { approxMin } from './coach.js';
+import { friendsCard } from './friends.js';
 
 export const workoutRow = (w) => {
   const cats = [...new Set(w.exercises.map((e) => exOf(e).cat))].slice(0, 4);
@@ -39,6 +40,7 @@ registerView('home', () => {
       <div class="row"><button class="btn primary sm" data-a="tour">Take the tour</button><button class="btn sm" data-a="tour-skip">Not now</button></div></section>`;
   }
   h += planToday();
+  h += friendsCard();
 
   // Start
   h += `<section class="card start">`;

@@ -118,8 +118,9 @@ export function touch() { state.rev++; }
 
 // Sync listens here. Every save stamps the record with the time it changed
 // (`u`), which is how two devices decide whose version is newer.
-let changed = () => {};
-export const onLocalChange = (fn) => { changed = fn; };
+const changeFns = [];
+const changed = (...a) => { for (const fn of changeFns) fn(...a); };
+export const onLocalChange = (fn) => { changeFns.push(fn); };
 const LISTS = { workouts: 'workouts', routines: 'routines', custom: 'custom' };
 
 export function saveWorkout(w) {
@@ -181,6 +182,9 @@ export function dropRaw(list, id) {
   state[LISTS[list]] = state[LISTS[list]].filter((x) => x.id !== id);
   return safe(run([list], 'readwrite', (t) => t.objectStore(list).delete(id)));
 }
+// Small named notes kept beside the log (e.g. the last friends' feed, for opening offline).
+export const kvGet = (key) => (db ? run(['kv'], 'readonly', (t) => t.objectStore('kv').get(key)).catch(() => undefined) : Promise.resolve(undefined));
+export const kvSet = (key, val) => safe(run(['kv'], 'readwrite', (t) => (val === undefined ? t.objectStore('kv').delete(key) : t.objectStore('kv').put(val, key))));
 export function afterSync() { sortAll(); reindex(); touch(); }
 export function saveSync() {
   return safe(run(['kv'], 'readwrite', (t) => t.objectStore('kv').put(state.sync, 'sync')));

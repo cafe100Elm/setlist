@@ -40,12 +40,16 @@ function syncSection() {
   if (!y.available) return '';
   const msg = y.note ? `<p class="sync-note">${esc(y.note)}</p>` : '';
   let h = `<section id="sec-sync"><h4>Sync across devices</h4>`;
-  if (!y.on) {
+  if (!y.on && !y.wait) {
     const busy = y.phase === 'starting';
     h += `<p class="muted">Optional. Sign in with Google on each of your devices and your log, routines and settings stay the same on all of them. Skip it and nothing leaves this device.</p>
       ${msg}
       <button class="btn big" data-a="sync-in"${busy ? ' disabled' : ''}>${busy ? 'Connecting…' : y.phase === 'tap' ? 'Continue with Google' : 'Sign in with Google'}</button>
-      <p class="muted small">By invitation for now. A private copy of your log is kept in the cloud under your Google account; only you can open it.</p>`;
+      <p class="muted small">A private copy of your log is kept in the cloud under your Google account. Only you can open it, apart from the recent workouts you let approved followers see (Friends). Sync starts once a friend who already uses it accepts your request to follow them.</p>`;
+  } else if (y.wait) {
+    h += `<p class="muted">Signed in as <b>${esc(y.email || 'your Google account')}</b>.</p>
+      <p class="sync-note">${y.phase === 'signin' ? 'This device needs you to sign in again.' : 'Sync starts by itself as soon as a friend who uses Setlist accepts your request to follow them. Until then your log stays only on this device.'}</p>${msg}
+      <div class="row">${y.phase === 'signin' ? '<button class="btn primary grow" data-a="sync-in">Sign in again</button>' : '<button class="btn primary grow" data-a="friends">Open Friends</button>'}<button class="btn" data-a="sync-out">Sign out</button></div>`;
   } else {
     const n = y.pending;
     let line;
@@ -78,6 +82,7 @@ function body() {
       <section><h4>Share Setlist with a friend</h4>
         <p class="muted">Send them the link. They install it the same way and get their own empty log: nothing of yours goes with it.</p>
         <div class="row"><button class="btn primary grow" data-a="share-app">${icons.share}Share the link</button><button class="btn" data-a="copy-link">Copy link</button></div>
+        ${syncInfo().available ? `<p class="muted">Want to see each other's workouts? Open <b>Friends</b> (the people button at the top) to send an invite to follow you.</p><button class="btn big" data-a="friends">${icons.people}Friends</button>` : ''}
       </section>
 
       ${syncSection()}
@@ -132,12 +137,12 @@ on('sync-in', () => { signIn(); });
 on('sync-now', () => { syncNow(); toast('Checking for changes…'); });
 on('sync-out', async () => {
   const y = syncInfo();
-  const body = `${y.pending ? `${plural(y.pending, 'change')} from this device ${y.pending === 1 ? "hasn't" : "haven't"} been sent yet and won't be. ` : ''}Your log stays on this device, and the copy in the cloud stays as it is. Sign in again any time to pick up where you left off.`;
-  if (!(await confirmBox({ title: 'Stop syncing on this device?', body, ok: 'Sign out', cancel: 'Stay signed in' }))) return;
+  const body = `${y.pending ? `${plural(y.pending, 'change')} from this device ${y.pending === 1 ? "hasn't" : "haven't"} been sent yet and won't be. ` : ''}Your log stays on this device, and the copy in the cloud stays as it is. Friends won't show on this device until you sign in again; who you follow and who follows you is kept. Sign in again any time to pick up where you left off.`;
+  if (!(await confirmBox({ title: 'Sign out on this device?', body, ok: 'Sign out', cancel: 'Stay signed in' }))) return;
   await signOutSync();
   refresh();
   render();
-  toast('Signed out of sync');
+  toast('Signed out');
 });
 on('share-app', () => shareApp());
 on('copy-link', () => copyText(appUrl(), 'Link copied'));
@@ -200,7 +205,7 @@ on('import-view', () => { closeSheet(); while (topSheet()) closeSheet(); go('his
 
 on('wipe', async () => {
   const n = state.workouts.length;
-  const synced = state.sync.on;
+  const synced = state.sync.on || state.sync.wait;
   if (!(await confirmBox({ title: 'Erase everything?', body: `${plural(n, 'workout')}, your routines and custom exercises will be permanently deleted from this device. ${synced ? 'This device will also be signed out of sync; the copy in the cloud and your other devices are not touched, and signing in again brings it all back.' : 'Save a backup first if you might want them back.'}`, ok: 'Erase everything', danger: true }))) return;
   if (!(await confirmBox({ title: 'Are you sure?', body: synced ? 'This device will be emptied and signed out of sync.' : "This can't be undone.", ok: 'Yes, erase', danger: true }))) return;
   if (synced) await signOutSync(); // first, so the erase isn't sent to the other devices

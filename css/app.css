@@ -407,8 +407,8 @@ details.group > *:not(summary) { margin-top: 10px; }
 .hist-btns .btn { padding: 0 10px; }
 
 /* ── Settings ── */
-.settings section { display: flex; flex-direction: column; gap: 10px; padding: 14px 0 16px; border-top: 1px solid var(--line); }
-.settings section:first-child { border-top: 0; padding-top: 2px; }
+.settings section, .friends section { display: flex; flex-direction: column; gap: 10px; padding: 14px 0 16px; border-top: 1px solid var(--line); }
+.settings section:first-child, .friends section:first-child { border-top: 0; padding-top: 2px; }
 h4 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
 .steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 7px; font-size: 15px; }
 .steps svg { display: inline; width: 16px; height: 16px; vertical-align: -3px; }
@@ -522,3 +522,29 @@ details.next summary { font-size: 12px; font-weight: 800; letter-spacing: .1em; 
 .t-art .srow { grid-template-columns: 26px minmax(0, 1fr) repeat(var(--n), 60px) 40px; gap: 5px; }
 .t-art .cell { height: 40px; } .t-art .chk { width: 40px; height: 40px; }
 .next-key { font-size: 12px; color: var(--muted); padding-top: 6px; border-top: 1px solid var(--line); }
+
+/* ── Friends ── */
+.icon-btn { position: relative; }
+.icon-btn.has-dot::after { content: ""; position: absolute; top: 1px; right: 1px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
+.friends .list .btn.sm, .friends .lrow .btn.sm { flex: none; }
+.friends .code, .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; color: var(--ink); }
+.friends input[name="code"] { text-transform: uppercase; letter-spacing: .12em; font-weight: 700; }
+.fr-note { display: block; width: 100%; text-align: left; color: var(--ink); }
+.cheer-n { flex: none; font-size: 13px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.board { display: flex; flex-direction: column; border-radius: 13px; overflow: hidden; border: 1px solid var(--line); }
+.brow { display: grid; grid-template-columns: 1fr 84px 96px; gap: 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); font-size: 15px; font-weight: 700; }
+.brow:first-child { border-top: 0; }
+.brow > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brow > span + span { text-align: right; font-variant-numeric: tabular-nums; }
+.brow > span:first-child > i:first-child { display: inline-block; width: 22px; font-style: normal; color: var(--muted); font-weight: 800; }
+.brow.bhead { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--raised); padding: 7px 12px; }
+.brow.me { background: var(--accent-soft); }
+.fr-detail h2 { font-size: 24px; letter-spacing: -.02em; }
+.fr-detail .lrow small { white-space: normal; }
+.fr-detail .lrow .badge { font-size: 0; padding: 5px; gap: 0; flex: none; }
+.t-feed { display: flex; flex-direction: column; background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 2px 12px; margin-bottom: 10px; }
+.t-feed > :first-child { border-top: 0; }
+.t-art .board { background: var(--surface); }
+.wrow small.cheer-by { color: var(--accent); font-weight: 700; }
+.hdr-text { min-width: 0; }
+.kicker { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

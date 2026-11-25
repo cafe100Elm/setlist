@@ -69,10 +69,17 @@ const STEPS = [
       <div class="lrow"><span><b>Leg Press</b><small>New record</small></span><span class="pr-badge">322 <small>est. 1RM</small></span></div></div>`,
   },
   {
+    title: 'Train with friends',
+    body: ['Tap the people button at the top to open Friends. Send a friend your invite link: they sign in with Google and ask to follow you, and you accept. Nobody sees anything of yours until you say yes.',
+      'You see each other\'s finished workouts, can cheer them, and get a this-week scoreboard. You choose whether followers see full workouts or only summaries. Notes are never shared.'],
+    art: () => `<div class="t-feed"><div class="wrow"><span class="wrow-t"><b>Sam · Legs <i class="live-tag">LIVE</i></b><small>Working out now · started 6:32 AM</small></span></div><div class="wrow"><span class="wrow-t"><b>Alex · Upper</b><small>Tue, Nov 24 · 41 min · 16 sets</small></span><span class="cheer-n">👏 2</span></div></div>
+      <div class="board"><div class="brow bhead"><span></span><span>Workouts</span><span>Lb lifted</span></div><div class="brow"><span><i>1</i>Alex</span><span>3</span><span>31,200</span></div><div class="brow me"><span><i>2</i>You</span><span>2</span><span>24,600</span></div></div>`,
+  },
+  {
     title: 'Keep it safe, sync it, share it',
     body: ['Your log lives on this phone. About once a month, tap the gear → Save a backup file and put it in iCloud or Drive. The app reminds you.',
-      'Use more than one device? Gear → Sync across devices → Sign in with Google on each one, and a workout logged on your phone shows up on your tablet within a minute. It is optional and by invitation for now.',
-      'To invite a friend, tap the gear → Share the link. They install it the same way and get their own empty log.'],
+      'Use more than one device? Gear → Sync across devices → Sign in with Google on each one, and a workout logged on your phone shows up on your tablet within a minute. It is optional.',
+      'To give a friend the app, tap the gear → Share the link. They install it the same way and get their own empty log.'],
     art: () => `<div class="t-sync"><span class="t-dev"><b>Phone</b><small>Legs · 7:10 AM</small></span><i class="farrow">⇄</i><span class="t-dev"><b>Tablet</b><small>Legs · 7:10 AM</small></span></div>
       <div class="stack"><span class="btn primary big">Save a backup file</span><span class="btn big">${icons.share}Share the link</span></div>`,
   },

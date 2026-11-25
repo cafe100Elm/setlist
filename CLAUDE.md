@@ -26,7 +26,8 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
   one file per screen: `home`, `log`, `library` (+ `exercises`, `plans`), `insights`, `history`, `settings` · `js/share.js` · `js/charts.js` ·
   `js/coach.js` (time estimates + what-to-aim-for) · `js/tour.js` (the built-in walkthrough) ·
   `js/sync.js` (optional sync: what to send, what to accept, merging) · `js/cloud.js` (the only file that talks to
-  Firebase) · `js/firebase-config.js` · `firebase/` (database rules; not part of the app).
+  Firebase) · `js/social.js` (following: requests, feeds, cheers, publishing) · `js/friends.js` (the Friends screen) ·
+  `js/firebase-config.js` · `firebase/` (database rules and their tests; not part of the app).
 - All paths are relative, so it works from a sub-folder URL (GitHub Pages) as well as a domain root.
 - A workout = `{id, title, notes, start, end, exercises:[{exId, name, sets:[{w, r, t, d, done, kind}]}]}`.
   `w` lb, `r` reps, `t` seconds (cardio shows minutes but stores seconds), `d` miles, `end: null` = in progress.
@@ -51,20 +52,21 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
   one), `off`. "Next weight up" = the next heavier weight the person has already used on that exercise (matches their
   machine), else +2.5 / 5 / 10 by size. Shown as the "Aim" strip in a live workout (Use fills the sets; nothing is
   changed silently), on the finish sheet ("What to aim for next time") and in exercise details.
-- **Tour** (`tour.js`): ten steps, pictures built from the app's own CSS classes with sample numbers. Opens from
+- **Tour** (`tour.js`): eleven steps (step 10 is "Train with friends"), pictures built from the app's own CSS classes with sample numbers. Opens from
   Settings → How to use Setlist, and once from a Home card (`settings.tourSeen`). **When a feature changes how the
   app is used, update the matching tour step in the same change.** Jeremy preferred this over a YouTube video.
 
-## Sync across devices (added 2026-11-25, optional, invite-only)
+## Sync across devices (added 2026-11-25, optional; who gets in: see "Who may sync")
 - Jeremy wanted his Android phone and iPad to hold the same log. Settings → Sync across devices → Sign in with
   Google on each device. Never signed in = exactly the old app: Google's code isn't even downloaded.
 - Firebase project **`setlist-log-sync`** on Jeremy's personal Google account (free plan): Google sign-in + Firestore.
   Layout: `users/{uid}/workouts|routines|custom/{id}` and `users/{uid}/settings/main`, each `{u, del, d, s}`
   (`u` = when it changed on a device, `del` = deleted marker, `d` = the item as JSON text, `s` = server time).
-- **Who may sync** is the email list in the Firestore document `config/access` → `emails` (only Jeremy today; he chose
-  "just me" on 2026-11-25). To let a friend sync, add their Google email there in the Firebase console; no code
-  change. The list lives in the database so no address is in this public repo. Anyone else who signs in is told
-  sync is by invitation and nothing changes for them.
+- **Who may sync** ("members"): anyone on the email list in the Firestore document `config/access` → `emails` (only
+  Jeremy; the list lives in the database so no address is in this public repo), **plus anyone an existing member has
+  accepted as a follower** (that creates `members/{their id}`; see Friends below). Someone who signs in before being
+  accepted stays signed in but "waiting" (`state.sync.wait`): nothing is uploaded, and sync starts by itself the
+  moment they are accepted. To remove someone entirely, delete their `members/{id}` document in the Firebase console.
 - The phone's own database stays the one the screens read. `store.js` stamps every save with `u` and tells
   `sync.js`, which keeps a saved "to send" list (`state.sync.out`), so offline changes go up later. Newest `u` wins.
   It always listens before it sends. Deletes are remembered (`state.sync.dead`) so an offline device can't bring
@@ -94,6 +96,50 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
   workouts imported on both under different ids merged to one set. Test data was then removed from the cloud.
 - Testing without two real devices: `localhost:8817` and `127.0.0.1:8817` are separate "devices" to the browser
   (separate storage and sign-in), so two tabs give a two-device test.
+
+## Friends: follow and be followed (added 2026-11-25)
+- Jeremy's choices (2026-11-25): people get in when **a member accepts their follow request** (friends can bring in
+  their own friends; no list for Jeremy to keep); followers see **full workouts, and each person can switch to
+  summaries only** (`settings.shareLevel` = `summary`); extras: **cheers, "working out now", this-week scoreboard**.
+- Where: people button in the header (left of the gear; a dot = someone is waiting to be accepted), a "Friends" card
+  on Home, and Settings → Share. The Home date uses a short month so three header buttons fit on a phone.
+- **Invite link** = the app address + `?f=CODE` (a 6-character code, `codes/{CODE}` → whose it is). Opening it
+  remembers the code (localStorage `setlist-follow`), opens Friends, and after sign-in offers "Ask to follow NAME".
+  An iPhone home-screen app has separate storage from Safari, so the Friends screen also has a box to type the code.
+- **Nothing is visible without a yes.** A follow is a request (`users/{them}/followers/{me}`, `st: 'req'`); only the
+  owner can set `st: 'ok'`. Accepting also writes `members/{follower}` (lets them in).
+- **What a follower can read is a separate published copy**, never the log itself: `users/{uid}/feed/{workoutId}` =
+  `{t, e, title, sets, vol, n, lv, u, d, ch}` (`d` = exercises with their sets as text, empty for summaries; `ch` =
+  cheers, follower id → name). Notes, routines and settings are never published. `social.js` `publish()` keeps the
+  newest 20 workouts there, only once the person has an accepted follower, and **only while sync is fully caught up**
+  (so a device that is behind can't publish old work or take down a workout it hasn't received yet). A workout in
+  progress is published with no numbers ("LIVE"; ignored after 6 hours).
+- Followers may add or remove only their own cheer on a feed item (the rules check exactly that).
+- Scoreboard = this week from Monday, worked out on the viewer's device from the feeds.
+- The last feed is kept on the device (IndexedDB `kv` → `social`) so Friends opens offline; signing out clears it.
+- Anything read from a friend's feed is **their data**: always `esc()` it, and only use a category letter from it
+  through `safeCat()` (friends.js). Keep that if you add fields.
+- Names: `profiles/{uid}` → `name` (first name from Google by default; changeable in Friends → You).
+- Rules: `firebase/firestore.rules` (plain-language comments inside). `member()` checks the owner list first so
+  Jeremy's own sync path is the same as before.
+- **Testing following** needs two different people, which the real project can't give you without real accounts.
+  Use the pretend cloud: `cd firebase && npx -y firebase-tools@latest emulators:start --only auth,firestore --project
+  demo-setlist` (needs Java; this Mac has none, so a temporary Temurin JRE was downloaded to the session scratch
+  folder with Jeremy's OK and `JAVA_HOME`/`PATH` pointed at it). Then `node firebase/test/rules-test.mjs` (77 checks
+  of who can and can't do what) and `node firebase/test/serve.mjs "$PWD"` (the app on port 8819 wired to the pretend
+  cloud; `localhost:8819` and `127.0.0.1:8819` are two people). Google's sign-in window can't be used there; sign a
+  made-up person in from the browser console with `signInWithCredential(getAuth(),
+  GoogleAuthProvider.credential('{"sub":"sam1","email":"sam@example.com","email_verified":true,"name":"Sam"}'))`
+  after setting localStorage `setlist-sync-signin` to the current time and reloading (that makes the app connect).
+  `cloud.js` only talks to the pretend cloud when the config has `emulator: true`, which the real config never has.
+- Verified 2026-11-25 on the pretend cloud with made-up people: invite link → ask → accept → the newcomer is let in
+  and sync starts; feed, details, cheers both ways, live badge, scoreboard, follow back, summaries only, delete,
+  remove a follower, typed code, wrong code, sign out. Notes were confirmed absent from what was published.
+- **Status:** published 2026-11-25 (rules deployed first, then the app pushed). Not yet tried on real phones:
+  Google's sign-in window inside an iPhone/iPad home-screen app is the open question, and following depends on it.
+  When changing the rules again, deploy them **before** pushing app code that needs them.
+- Not built: comments, notifications when the app is closed (a web app on a free plan can't push), blocking a
+  person from asking again, deleting your cloud data from inside the app.
 
 ## Gotchas
 - **Adding a JS/CSS/icon file? Add it to the `SHELL` list in `sw.js`** or it won't work offline (files not in the
@@ -131,6 +177,6 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 
 ## Not built (ideas, only if asked)
 - Daily calorie/weight half of the old Health Dashboard (left out on purpose; the import skips those rows).
-- Sync for friends (add their email to `config/access`; see Sync above) and deleting the cloud copy from inside the app.
+- Deleting the cloud copy from inside the app. (Friends get sync by being accepted as a follower; see Friends.)
 - kg / km display.
 - Build-your-own plans (a weekly schedule from saved routines).

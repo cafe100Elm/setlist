@@ -10,6 +10,7 @@ import './history.js';
 import './tour.js';
 import { showImportResult, refreshSettings } from './settings.js';
 import { initSync, onSyncStatus, onSyncData } from './sync.js';
+import { initFriends, refreshFriends } from './friends.js';
 import * as io from './io.js';
 import * as stats from './stats.js';
 
@@ -31,7 +32,10 @@ function redraw() {
 }
 onSyncData(redraw);
 onSyncStatus(refreshSettings);
+onSyncStatus(refreshFriends);
 initSync();
+// Following friends (only does anything once signed in). An invite link (…?f=CODE) opens the Friends screen.
+initFriends();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Offline mode unavailable', e));
