@@ -92,10 +92,10 @@ registerView('home', () => {
     h += `<section class="card"><div class="card-h"><h2>Recent workouts</h2><button class="more" data-a="go" data-tab="history">All →</button></div>
       <div class="list">${state.workouts.slice(0, 5).map(workoutRow).join('')}</div></section>`;
 
-    // Backup reminder: on-device data deserves a copy somewhere else
+    // Backup reminder: on-device data deserves a copy somewhere else (sync already keeps one)
     const last = state.settings.lastBackup || 0;
     const since = state.workouts.filter((w) => w.start > last).length;
-    if (since >= 5 && Date.now() - last > 30 * 864e5 && Date.now() - (state.settings.backupNudge || 0) > 14 * 864e5) {
+    if (!state.sync.on && since >= 5 && Date.now() - last > 30 * 864e5 && Date.now() - (state.settings.backupNudge || 0) > 14 * 864e5) {
       h += `<section class="card install"><div><b>Back up your log</b><p>${last ? `${plural(since, 'workout')} since your last backup.` : 'Your workouts live only on this device.'} A backup file keeps them safe if the phone is lost or replaced.</p></div>
         <div class="row"><button class="btn primary sm" data-a="backup">Save a backup</button><button class="btn sm" data-a="backup-later">Later</button></div></section>`;
     }

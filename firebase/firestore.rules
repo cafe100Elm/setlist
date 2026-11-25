@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Who may sync is a list of Google account emails kept in the database
+    // itself (config/access -> emails), so no one's address is in this public
+    // file. Only the project owner can edit that list, from the Firebase console.
+    function invited() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in get(/databases/$(database)/documents/config/access).data.emails;
+    }
+    // Each person can read and write only their own log.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid && invited();
+    }
+    // Everything else, including config/access, is closed to the app.
+  }
+}

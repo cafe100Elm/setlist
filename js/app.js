@@ -8,7 +8,8 @@ import './library.js';
 import './insights.js';
 import './history.js';
 import './tour.js';
-import { showImportResult } from './settings.js';
+import { showImportResult, refreshSettings } from './settings.js';
+import { initSync, onSyncStatus, onSyncData } from './sync.js';
 import * as io from './io.js';
 import * as stats from './stats.js';
 
@@ -19,6 +20,18 @@ const act = activeWorkout();
 if (act) { ui.openId = act.id; ui.tab = 'log'; } // reopen straight into a workout in progress
 applyThemeColor();
 render();
+
+// Optional sync (off unless the person signed in). When another device's changes
+// arrive, redraw, but not while someone is typing in a box on the page.
+function redraw() {
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.closest('#view')) { setTimeout(redraw, 1500); return; }
+  if (ui.openId && !state.workouts.some((w) => w.id === ui.openId)) ui.openId = null; // it was deleted on the other device
+  render();
+}
+onSyncData(redraw);
+onSyncStatus(refreshSettings);
+initSync();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Offline mode unavailable', e));

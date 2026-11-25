@@ -5,6 +5,7 @@ import { importFile, makeBackup, makeCSV } from './io.js';
 import { paceNote } from './coach.js';
 import { openTour } from './tour.js';
 import { saveFile, shareApp, copyText, appUrl } from './share.js';
+import { syncInfo, signIn, signOutSync, syncNow } from './sync.js';
 import { esc, num, fmtDate, plural, isIOS, isAndroid, isStandalone, clock } from './util.js';
 
 let installEvent = null;
@@ -26,6 +27,42 @@ function installHelp() {
   return h;
 }
 
+// "today at 9:41 AM", "yesterday at …", or a date
+function when(ts) {
+  const d = new Date(ts), t = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(ts).setHours(0, 0, 0, 0)) / 864e5);
+  return days === 0 ? `today at ${t}` : days === 1 ? `yesterday at ${t}` : `${fmtDate(ts, { year: true })} at ${t}`;
+}
+
+// Sync across devices: optional, and nothing here runs until someone taps Sign in.
+function syncSection() {
+  const y = syncInfo();
+  if (!y.available) return '';
+  const msg = y.note ? `<p class="sync-note">${esc(y.note)}</p>` : '';
+  let h = `<section id="sec-sync"><h4>Sync across devices</h4>`;
+  if (!y.on) {
+    const busy = y.phase === 'starting';
+    h += `<p class="muted">Optional. Sign in with Google on each of your devices and your log, routines and settings stay the same on all of them. Skip it and nothing leaves this device.</p>
+      ${msg}
+      <button class="btn big" data-a="sync-in"${busy ? ' disabled' : ''}>${busy ? 'Connecting…' : y.phase === 'tap' ? 'Continue with Google' : 'Sign in with Google'}</button>
+      <p class="muted small">By invitation for now. A private copy of your log is kept in the cloud under your Google account; only you can open it.</p>`;
+  } else {
+    const n = y.pending;
+    let line;
+    if (y.phase === 'signin') line = `<p class="sync-note">This device needs you to sign in again to keep syncing.</p>`;
+    else if (!y.online || y.phase === 'offline') line = `<p class="muted"><b>No connection.</b> ${n ? `${plural(n, 'change')} will be sent when you're back online.` : "It will catch up when you're back online."}</p>`;
+    else if (y.phase === 'error') line = '';
+    else if (y.phase !== 'live') line = `<p class="muted">Checking for changes…</p>`;
+    else if (n) line = `<p class="muted">Sending ${plural(n, 'change')}…</p>`;
+    else line = `<p class="ok">✓ Up to date</p>`;
+    h += `<p class="muted">On for <b>${esc(y.email || 'your Google account')}</b>. Changes made here appear on your other devices within a minute, and theirs appear here.</p>
+      ${line}${msg}
+      <p class="muted">${y.last ? `Last synced ${when(y.last)}.` : 'Not synced yet.'}</p>
+      <div class="row">${y.phase === 'signin' ? '<button class="btn primary grow" data-a="sync-in">Sign in again</button>' : '<button class="btn grow" data-a="sync-now">Sync now</button>'}<button class="btn" data-a="sync-out">Sign out</button></div>`;
+  }
+  return h + `</section>`;
+}
+
 function body() {
   const s = state.settings;
   const n = state.workouts.length;
@@ -43,8 +80,10 @@ function body() {
         <div class="row"><button class="btn primary grow" data-a="share-app">${icons.share}Share the link</button><button class="btn" data-a="copy-link">Copy link</button></div>
       </section>
 
+      ${syncSection()}
+
       <section><h4>Your data</h4>
-        <p class="muted">${n ? `${plural(n, 'workout')} saved on this device.` : 'Nothing logged yet.'} Your log stays on this phone and is never uploaded. A backup file is how you keep a copy or move to a new phone.</p>
+        <p class="muted">${n ? `${plural(n, 'workout')} saved on this device.` : 'Nothing logged yet.'} ${state.sync.on ? 'Sync keeps your devices the same; a backup file is still worth saving now and then as a spare copy.' : 'Your log stays on this phone and is never uploaded. A backup file is how you keep a copy or move to a new phone.'}</p>
         <p class="muted">${s.lastBackup ? `Last backup: ${fmtDate(s.lastBackup, { year: true })}.` : 'No backup saved yet.'}</p>
         <div class="stack">
           <button class="btn primary big" data-a="backup"${n ? '' : ' disabled'}>Save a backup file</button>
@@ -77,6 +116,7 @@ export function openSettings(section) {
   openSheet({ cls: 'tall', html: body() });
   if (section) setTimeout(() => { const el = document.getElementById('sec-' + section); if (el) el.scrollIntoView(); }, 60);
 }
+export const refreshSettings = () => refresh();
 const refresh = () => { const s = topSheet(); if (s && s.body.querySelector('.settings')) { const y = s.body.querySelector('.sheet-scroll').scrollTop; s.set(body()); s.body.querySelector('.sheet-scroll').scrollTop = y; } };
 
 on('settings', (el) => openSettings(el.dataset.sec));
@@ -87,6 +127,17 @@ on('install', async () => {
   await installEvent.userChoice;
   installEvent = null;
   refresh();
+});
+on('sync-in', () => { signIn(); });
+on('sync-now', () => { syncNow(); toast('Checking for changes…'); });
+on('sync-out', async () => {
+  const y = syncInfo();
+  const body = `${y.pending ? `${plural(y.pending, 'change')} from this device ${y.pending === 1 ? "hasn't" : "haven't"} been sent yet and won't be. ` : ''}Your log stays on this device, and the copy in the cloud stays as it is. Sign in again any time to pick up where you left off.`;
+  if (!(await confirmBox({ title: 'Stop syncing on this device?', body, ok: 'Sign out', cancel: 'Stay signed in' }))) return;
+  await signOutSync();
+  refresh();
+  render();
+  toast('Signed out of sync');
 });
 on('share-app', () => shareApp());
 on('copy-link', () => copyText(appUrl(), 'Link copied'));
@@ -149,8 +200,10 @@ on('import-view', () => { closeSheet(); while (topSheet()) closeSheet(); go('his
 
 on('wipe', async () => {
   const n = state.workouts.length;
-  if (!(await confirmBox({ title: 'Erase everything?', body: `${plural(n, 'workout')}, your routines and custom exercises will be permanently deleted from this device. Save a backup first if you might want them back.`, ok: 'Erase everything', danger: true }))) return;
-  if (!(await confirmBox({ title: 'Are you sure?', body: "This can't be undone.", ok: 'Yes, erase', danger: true }))) return;
+  const synced = state.sync.on;
+  if (!(await confirmBox({ title: 'Erase everything?', body: `${plural(n, 'workout')}, your routines and custom exercises will be permanently deleted from this device. ${synced ? 'This device will also be signed out of sync; the copy in the cloud and your other devices are not touched, and signing in again brings it all back.' : 'Save a backup first if you might want them back.'}`, ok: 'Erase everything', danger: true }))) return;
+  if (!(await confirmBox({ title: 'Are you sure?', body: synced ? 'This device will be emptied and signed out of sync.' : "This can't be undone.", ok: 'Yes, erase', danger: true }))) return;
+  if (synced) await signOutSync(); // first, so the erase isn't sent to the other devices
   await wipe();
   ui.openId = null; ui.rest = null; ui.draft = null;
   while (topSheet()) closeSheet();

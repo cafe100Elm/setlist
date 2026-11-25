@@ -1,11 +1,12 @@
 # Setlist — workout log (personal, shared with friends)
 
-An installable web app (PWA): plain HTML/CSS/JS, **no build step, no server, no accounts**. It replaces the
+An installable web app (PWA): plain HTML/CSS/JS, **no build step, no server, no account needed** (optional sync,
+below, is the one exception and is off unless someone signs in). It replaces the
 Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Projects/personal/workout-health`.
 
 ## The rules that matter
 - **No one's workout history goes in the code.** Each person's log lives only in their own phone's browser
-  storage (IndexedDB, database name `setlist`). `js/lib.js` holds only the generic exercise list and routine
+  storage (IndexedDB, database name `setlist`), plus their own private cloud space if they turned on sync. `js/lib.js` holds only the generic exercise list and routine
   templates. Jeremy's history arrives by importing his export file inside the app.
 - **`reference/` is private and gitignored**: Jeremy's exports (`workout-tracker-data-export.json`,
   `workout-tracker-hevy-export.csv`) and the old app's guide. Never commit or publish it. `.gitignore` also
@@ -23,7 +24,9 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 - `js/store.js` storage · `js/lib.js` exercises, templates, name-guessing · `js/stats.js` every calculation ·
   `js/io.js` import/export · `js/core.js` frame, sheets, number pad, rest timer, theme · `js/workout.js` workout rules ·
   one file per screen: `home`, `log`, `library` (+ `exercises`, `plans`), `insights`, `history`, `settings` · `js/share.js` · `js/charts.js` ·
-  `js/coach.js` (time estimates + what-to-aim-for) · `js/tour.js` (the built-in walkthrough).
+  `js/coach.js` (time estimates + what-to-aim-for) · `js/tour.js` (the built-in walkthrough) ·
+  `js/sync.js` (optional sync: what to send, what to accept, merging) · `js/cloud.js` (the only file that talks to
+  Firebase) · `js/firebase-config.js` · `firebase/` (database rules; not part of the app).
 - All paths are relative, so it works from a sub-folder URL (GitHub Pages) as well as a domain root.
 - A workout = `{id, title, notes, start, end, exercises:[{exId, name, sets:[{w, r, t, d, done, kind}]}]}`.
   `w` lb, `r` reps, `t` seconds (cardio shows minutes but stores seconds), `d` miles, `end: null` = in progress.
@@ -52,10 +55,53 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
   Settings → How to use Setlist, and once from a Home card (`settings.tourSeen`). **When a feature changes how the
   app is used, update the matching tour step in the same change.** Jeremy preferred this over a YouTube video.
 
+## Sync across devices (added 2026-11-25, optional, invite-only)
+- Jeremy wanted his Android phone and iPad to hold the same log. Settings → Sync across devices → Sign in with
+  Google on each device. Never signed in = exactly the old app: Google's code isn't even downloaded.
+- Firebase project **`setlist-log-sync`** on Jeremy's personal Google account (free plan): Google sign-in + Firestore.
+  Layout: `users/{uid}/workouts|routines|custom/{id}` and `users/{uid}/settings/main`, each `{u, del, d, s}`
+  (`u` = when it changed on a device, `del` = deleted marker, `d` = the item as JSON text, `s` = server time).
+- **Who may sync** is the email list in the Firestore document `config/access` → `emails` (only Jeremy today; he chose
+  "just me" on 2026-11-25). To let a friend sync, add their Google email there in the Firebase console; no code
+  change. The list lives in the database so no address is in this public repo. Anyone else who signs in is told
+  sync is by invitation and nothing changes for them.
+- The phone's own database stays the one the screens read. `store.js` stamps every save with `u` and tells
+  `sync.js`, which keeps a saved "to send" list (`state.sync.out`), so offline changes go up later. Newest `u` wins.
+  It always listens before it sends. Deletes are remembered (`state.sync.dead`) so an offline device can't bring
+  one back. Sync bookkeeping is in IndexedDB `kv` → `sync`.
+- **Twins:** two devices that each imported the same history have the same workouts under different ids. On sync
+  they are matched (workouts: title + start minute; routines: name + exercise names; custom exercises: name) and
+  merged, and workouts are re-pointed at the exercise that was kept. Don't remove this: without it a second
+  device doubles the log.
+- Not synced on purpose: backup date and reminder, theme. A workout in progress does sync (it appears as live on
+  the other device).
+- "Erase everything" signs the device out first and leaves the cloud copy alone. There is no in-app way to delete
+  the cloud copy; do it in the Firebase console if ever needed.
+- Sign-in opens Google's small window; if the browser blocks it the button turns into "Continue with Google"
+  (second tap works). Going to Google's page and back is only a last resort: it is unreliable on Safari because the
+  app (github.io) and the sign-in address (firebaseapp.com) are different sites.
+- Rules: edit `firebase/firestore.rules`, then `cd firebase && npx -y firebase-tools@latest deploy --only firestore:rules`
+  (`firebase login:list` must show Jeremy's personal account). Allowed sign-in addresses (Firebase console →
+  Authentication → Settings): `cafe100elm.github.io`, `localhost`, `127.0.0.1`.
+- "Newest wins" is per whole item: if the same workout is edited on both devices before they sync, the later
+  edit replaces the earlier one entirely (it does not blend the two).
+- `js/sync.js`, `js/cloud.js` and `js/firebase-config.js` **must be in `sw.js` `SHELL`**: `app.js` imports them at
+  start-up, so if they aren't saved for offline the whole app fails to open without a signal.
+- Verified 2026-11-25 with two signed-in browser tabs against the real project: new workout, ticked sets, finish,
+  edit and delete carried over in seconds; changes made with no connection were sent after reopening; 220 made-up
+  workouts imported on both under different ids merged to one set. Test data was then removed from the cloud.
+- Testing without two real devices: `localhost:8817` and `127.0.0.1:8817` are separate "devices" to the browser
+  (separate storage and sign-in), so two tabs give a two-device test.
+
 ## Gotchas
-- **Adding a JS/CSS/icon file? Add it to the `SHELL` list in `sw.js`** or it won't work offline.
-- Updates reach phones automatically: each open re-checks files in the background; the new version shows on
-  the *next* open. No version number to bump. (Bump `CACHE` in `sw.js` only to force-clear everything.)
+- **Adding a JS/CSS/icon file? Add it to the `SHELL` list in `sw.js`** or it won't work offline (files not in the
+  list are never saved on the device).
+- Updates reach phones automatically and are **all-or-nothing**: the app opens from its saved copy; a few seconds
+  later the helper downloads every `SHELL` file and swaps them in together only if all arrive. The new version shows
+  on the *next* open. No version number to bump. (Before 2026-11-25 files refreshed one by one, and an interrupted
+  refresh could leave a half-old, half-new app that opened blank once. Don't go back to that.)
+- To rehearse an update: serve a `git archive` of the old commit from a scratch folder, open it in headless Chrome,
+  swap the new files in, reopen twice, then reopen offline. The helper re-checks at most once a minute.
 - Imports only add. Duplicates are matched on title + start minute, so re-importing is safe.
 - Imported exercises match built-ins by exact name or a listed alias (`aka` in `js/lib.js`); anything else
   becomes a custom exercise. Similar-but-different machines are deliberately *not* merged
@@ -83,6 +129,6 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 
 ## Not built (ideas, only if asked)
 - Daily calorie/weight half of the old Health Dashboard (left out on purpose; the import skips those rows).
-- Sync between devices (would need accounts + a database; today it's backup file out, import in).
+- Sync for friends (add their email to `config/access`; see Sync above) and deleting the cloud copy from inside the app.
 - kg / km display.
 - Build-your-own plans (a weekly schedule from saved routines).

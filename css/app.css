@@ -413,6 +413,7 @@ h4 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
 .steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 7px; font-size: 15px; }
 .steps svg { display: inline; width: 16px; height: 16px; vertical-align: -3px; }
 .ok { color: var(--done); font-weight: 700; }
+.sync-note { font-size: 13.5px; font-weight: 600; padding: 9px 12px; border-radius: 10px; background: var(--accent-soft); }
 .toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
 .toggle span { display: flex; flex-direction: column; }
 .toggle b { font-size: 15px; font-weight: 600; }
@@ -512,6 +513,11 @@ details.next summary { font-size: 12px; font-weight: 800; letter-spacing: .1em; 
 .t-rest { display: flex; align-items: center; gap: 9px; padding: 9px 10px 9px 16px; border-radius: 18px; color: #fff; background: linear-gradient(90deg, #d9400f 78%, #17150f 78%); }
 .t-rest b { font-size: 24px; font-weight: 800; }
 .t-pill { padding: 7px 12px; border-radius: 999px; background: rgba(255, 255, 255, .22); font-weight: 700; font-size: 13.5px; }
+.t-sync { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.t-sync .farrow { flex: 0 0 22px; font-size: 18px; }
+.t-dev { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 9px 11px; border-radius: 12px; background: var(--surface); border: 1.5px solid var(--line); }
+.t-dev b { font-size: 14px; }
+.t-dev small { font-size: 12px; color: var(--muted); }
 .t-chip { flex: 1; min-height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-weight: 800; font-size: 14px; }
 .t-art .srow { grid-template-columns: 26px minmax(0, 1fr) repeat(var(--n), 60px) 40px; gap: 5px; }
 .t-art .cell { height: 40px; } .t-art .chk { width: 40px; height: 40px; }

@@ -10,7 +10,7 @@ const head = (cols) => `<div class="srow shead" style="--n:${cols.length}"><span
 const STEPS = [
   {
     title: 'Welcome to Setlist',
-    body: ['A workout log that lives on your phone. No account, and nothing you log leaves this device.', 'Five tabs run along the bottom: Home, Workout, Library, Insights and History. This tour takes about two minutes.'],
+    body: ['A workout log that lives on your phone. No account needed, and nothing you log leaves this device unless you turn on sync.', 'Five tabs run along the bottom: Home, Workout, Library, Insights and History. This tour takes about two minutes.'],
     art: () => `<div class="stats"><div><b>220</b><span>Workouts</span></div><div><b>3</b><span>This week</span></div><div><b>2<small>d</small></b><span>Streak</span></div><div><b>2.7M</b><span>Lb lifted</span></div></div>
       <div class="t-tabs">${[['home', 'Home'], ['log', 'Workout'], ['library', 'Library'], ['insights', 'Insights'], ['history', 'History']].map(([k, l], i) => `<span class="tab${i === 0 ? ' on' : ''}">${icons[k]}<span>${l}</span></span>`).join('')}</div>`,
   },
@@ -69,9 +69,12 @@ const STEPS = [
       <div class="lrow"><span><b>Leg Press</b><small>New record</small></span><span class="pr-badge">322 <small>est. 1RM</small></span></div></div>`,
   },
   {
-    title: 'Keep it safe, and share it',
-    body: ['Your log exists only on this phone. About once a month, tap the gear → Save a backup file and put it in iCloud or Drive. The app reminds you.', 'To invite a friend, tap the gear → Share the link. They install it the same way and get their own empty log.'],
-    art: () => `<div class="stack"><span class="btn primary big">Save a backup file</span><span class="btn big">${icons.share}Share the link</span></div>`,
+    title: 'Keep it safe, sync it, share it',
+    body: ['Your log lives on this phone. About once a month, tap the gear → Save a backup file and put it in iCloud or Drive. The app reminds you.',
+      'Use more than one device? Gear → Sync across devices → Sign in with Google on each one, and a workout logged on your phone shows up on your tablet within a minute. It is optional and by invitation for now.',
+      'To invite a friend, tap the gear → Share the link. They install it the same way and get their own empty log.'],
+    art: () => `<div class="t-sync"><span class="t-dev"><b>Phone</b><small>Legs · 7:10 AM</small></span><i class="farrow">⇄</i><span class="t-dev"><b>Tablet</b><small>Legs · 7:10 AM</small></span></div>
+      <div class="stack"><span class="btn primary big">Save a backup file</span><span class="btn big">${icons.share}Share the link</span></div>`,
   },
 ];
 
