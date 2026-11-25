@@ -240,7 +240,9 @@ on('rest', (el) => startRest(+el.dataset.sec));
 on('rest-add', () => { if (ui.rest) { ui.rest.end += 15000; ui.rest.total += 15; tick(); } });
 on('rest-skip', () => { ui.rest = null; tick(); });
 
+export const tickHooks = []; // extra once-a-tick updates registered by screens
 export function tick() {
+  for (const f of tickHooks) f();
   const bar = $('#restbar');
   if (ui.rest) {
     const left = (ui.rest.end - Date.now()) / 1000;

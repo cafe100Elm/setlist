@@ -1,6 +1,6 @@
 // The Workout tab: logging sets live, and reviewing a finished workout.
 import { state, saveWorkout, deleteWorkout, activeWorkout, getWorkout, exOf } from './store.js';
-import { ui, on, onChange, registerView, render, go, toast, confirmBox, promptBox, openPad, openSheet, closeSheet, startRest, primeAudio, badge, icons } from './core.js';
+import { ui, on, onChange, registerView, render, go, toast, confirmBox, promptBox, openPad, openSheet, closeSheet, startRest, primeAudio, badge, icons, tickHooks } from './core.js';
 import { TYPES, FIELDS } from './lib.js';
 import { prevSession, exSummary, wVol, wSets } from './stats.js';
 import { spark } from './charts.js';
@@ -8,8 +8,19 @@ import { esc, num, clock, mins, fmtDate, fmtTime, fmtSet, fmtSets, plural } from
 import { startWorkout, addExercise, ghosts, newRecords, routineFromWorkout, typeKeys, blank } from './workout.js';
 import { openPicker } from './exercises.js';
 import { shareText, shareImage, workoutText } from './share.js';
+import { coach, etaText } from './coach.js';
 
 const current = () => getWorkout(ui.openId) || activeWorkout();
+// Rep targets a routine already put into the sets still to do
+const plannedReps = (we) => we.sets.map((s) => (s.done ? null : s.r));
+const eta = (w) => { const e = etaText(w); return `<div class="eta${e.over ? ' over' : ''}" id="eta">${esc(e.text)}</div>`; };
+tickHooks.push(() => {
+  const el = document.getElementById('eta');
+  const w = el && activeWorkout();
+  if (!w) return;
+  const e = etaText(w);
+  if (el.textContent !== e.text) { el.textContent = e.text; el.classList.toggle('over', e.over); }
+});
 const KIND_LABEL = { w: 'W', d: 'D', f: 'F' };
 const KIND_NAME = { w: 'Warm-up set', d: 'Drop set', f: 'Set to failure' };
 
@@ -36,6 +47,15 @@ function exCard(w, we, ei, live) {
     bits.push(`<span>${plural(sum.count, 'session')}</span>`);
     hist = `<div class="ex-hist">${bits.join('')}${sum.trend.filter(Boolean).length > 1 ? spark(sum.trend) : ''}</div>`;
   }
+  // Coach: what to aim for today, with one tap to put it into the sets
+  let aim = '';
+  if (live && we.sets.some((s) => !s.done)) {
+    const c = coach(ex, w, plannedReps(we));
+    if (c) {
+      const inPlace = we.sets.every((s, i) => s.done || !c.sets[i] || ['w', 'r', 't'].every((k) => c.sets[i][k] == null || s[k] === c.sets[i][k]));
+      aim = `<div class="coach"><div class="coach-t"><span><b>Aim</b> ${esc(c.text)}</span><small>${esc(c.note)}</small></div>${!c.changed ? '' : inPlace ? '<span class="saved">✓ Set</span>' : `<button class="btn sm" data-a="coach-use" data-ei="${ei}">Use</button>`}</div>`;
+    }
+  }
   const rows = we.sets.map((s, si) => {
     const p = prev && prev.sets[si];
     const kind = KIND_LABEL[s.kind];
@@ -52,7 +72,7 @@ function exCard(w, we, ei, live) {
       ${live ? `<button class="icon-btn sm" data-a="ex-menu" data-ei="${ei}" aria-label="Options for ${esc(ex.name)}">${icons.dots}</button>` : ''}
     </div>
     <div class="ex-sub">${badge(ex.cat)}<span>${esc([ex.muscle, ex.equip].filter(Boolean).join(' · '))}</span></div>
-    ${hist}
+    ${hist}${aim}
     <div class="sets">
       <div class="srow shead" style="--n:${fields.length}"><span>SET</span><span>PREVIOUS</span>${fields.map((f) => `<span>${FIELDS[f].head}</span>`).join('')}<span>${live ? '✓' : ''}</span></div>
       ${rows}
@@ -77,6 +97,7 @@ registerView('log', () => {
   let h = `<section class="whead">
     <input class="wtitle" value="${esc(w.title)}" data-c="w-title" aria-label="Workout name" autocomplete="off" enterkeyhint="done">
     <div class="wmeta">${meta.map((m) => `<span>${m}</span>`).join('')}</div>
+    ${live ? eta(w) : ''}
     ${live
     ? `<div class="row"><button class="btn primary grow" data-a="w-finish">Finish workout</button><button class="btn danger-text" data-a="w-discard">Discard</button></div>`
     : `<div class="row wrap"><button class="btn" data-a="w-share">${icons.share}Share</button><button class="btn" data-a="w-repeat">Repeat</button><button class="btn" data-a="w-routine">Save as routine</button><button class="btn" data-a="w-reopen">Reopen</button></div>`}
@@ -148,6 +169,18 @@ on('set-kind', (el) => {
   saveWorkout(w); render();
   toast(next ? KIND_NAME[next] : 'Normal set');
 });
+on('coach-use', (el) => {
+  const { w, we, ex } = ctx(el);
+  const c = coach(ex, w, plannedReps(we));
+  if (!c) return;
+  we.sets.forEach((s, i) => {
+    const t = c.sets[i];
+    if (!t || s.done) return;
+    for (const k of ['w', 'r', 't']) if (t[k] != null) s[k] = t[k];
+  });
+  saveWorkout(w); render();
+  toast('Targets are in your sets. Tap ✓ as you finish each one.');
+});
 on('set-add', (el) => { const { w, we } = ctx(el); we.sets.push(blank()); saveWorkout(w); render(); });
 on('set-del', (el) => { const { w, we } = ctx(el); if (we.sets.length > 1) { we.sets.pop(); saveWorkout(w); render(); } });
 
@@ -209,12 +242,14 @@ on('w-finish', async () => {
   render();
   window.scrollTo(0, 0);
   const prs = newRecords(w);
+  const next = w.exercises.map((we) => ({ name: exOf(we).name, c: coach(exOf(we), null) })).filter((x) => x.c);
   const vol = wVol(w);
   openSheet({
     cls: 'dialog done-sheet',
     html: `<div class="done-ic">${icons.check}</div><h3>Workout saved</h3>
       <div class="figs"><div><b>${mins(w.end - w.start)}</b><span>Time</span></div><div><b>${wSets(w)}</b><span>Sets</span></div>${vol ? `<div><b>${num(vol, 0)}</b><span>Pounds</span></div>` : ''}</div>
       ${prs.length ? `<div class="pr-list"><div class="sub-h">New personal records</div>${prs.map((p) => `<div class="pr"><b>${esc(p.name)}</b><span>${num(p.w)} × ${p.r} <small>was ${num(p.before)}</small></span></div>`).join('')}</div>` : ''}
+      ${next.length ? `<details class="next" open><summary>What to aim for next time</summary>${next.map((x) => `<div class="nx"><b>${esc(x.name)}</b><span>${x.c.up ? '↑ ' : ''}${esc(x.c.text)}</span></div>`).join('')}<p class="next-key">↑ means go up in weight. No arrow: match it again, or add a rep.</p></details>` : ''}
       <div class="stack"><button class="btn primary big" data-a="w-share">${icons.share}Share this workout</button><button class="btn big" data-a="sheet-close">Done</button></div>`,
   });
 });

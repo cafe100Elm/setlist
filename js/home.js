@@ -2,11 +2,12 @@
 import { state, activeWorkout, getEx, exOf } from './store.js';
 import { ui, on, onSubmit, registerView, render, go, badge, icons, setSetting } from './core.js';
 import { STARTERS } from './lib.js';
-import { totals, series, prs, cardio, wVol, wSets } from './stats.js';
+import { totals, series, prs, cardio, wVol, wSets, estimate } from './stats.js';
 import { barChart } from './charts.js';
 import { esc, num, abbr, clock, fmtDate, plural, isStandalone, isIOS, isAndroid } from './util.js';
 import { startWorkout, routineFromTemplate } from './workout.js';
 import { planToday } from './plans.js';
+import { approxMin } from './coach.js';
 
 export const workoutRow = (w) => {
   const cats = [...new Set(w.exercises.map((e) => exOf(e).cat))].slice(0, 4);
@@ -32,6 +33,11 @@ registerView('home', () => {
     <div><b>${abbr(t.vol)}</b><span>Lb lifted</span></div>
   </div>`;
 
+  // Offer the walkthrough once (new installs, and once after the tour was added)
+  if (!state.settings.tourSeen) {
+    h += `<section class="card install"><div><b>See how Setlist works</b><p>A two-minute tour: logging, the coach, time targets, plans and backups.</p></div>
+      <div class="row"><button class="btn primary sm" data-a="tour">Take the tour</button><button class="btn sm" data-a="tour-skip">Not now</button></div></section>`;
+  }
   h += planToday();
 
   // Start
@@ -43,10 +49,10 @@ registerView('home', () => {
       <form class="row" data-s="start"><input name="title" placeholder="Name it (optional)" autocomplete="off" enterkeyhint="go" aria-label="Workout name"><button class="btn primary">Start →</button></form>`;
     const mine = state.routines.slice(0, 4);
     if (mine.length) {
-      h += `<div class="tiles">${mine.map((r) => `<button class="tile" data-a="routine-start" data-id="${r.id}"><b>${esc(r.name)}</b><small>${plural(r.exercises.length, 'exercise')}${r.desc ? ' · ' + esc(r.desc) : ''}</small></button>`).join('')}</div>`;
+      h += `<div class="tiles">${mine.map((r) => `<button class="tile" data-a="routine-start" data-id="${r.id}"><b>${esc(r.name)}</b><small>${plural(r.exercises.length, 'exercise')} · ≈ ${approxMin(estimate(r.exercises).sec)} min${r.desc ? ' · ' + esc(r.desc) : ''}</small></button>`).join('')}</div>`;
       if (state.routines.length > 4) h += `<button class="link block" data-a="go" data-tab="library" data-lib="routines">All ${state.routines.length} routines →</button>`;
     } else {
-      h += `<div class="tiles">${STARTERS.slice(0, 4).map((r) => `<button class="tile" data-a="tpl-start" data-id="${r.id}"><i class="tag">STARTER</i><b>${esc(r.name)}</b><small>${plural(r.exercises.length, 'exercise')} · ${esc(r.desc)}</small></button>`).join('')}</div>
+      h += `<div class="tiles">${STARTERS.slice(0, 4).map((r) => `<button class="tile" data-a="tpl-start" data-id="${r.id}"><i class="tag">STARTER</i><b>${esc(r.name)}</b><small>${plural(r.exercises.length, 'exercise')} · ≈ ${approxMin(estimate(r.exercises).sec)} min · ${esc(r.desc)}</small></button>`).join('')}</div>
         <button class="link block" data-a="go" data-tab="library" data-lib="routines">Browse all routines →</button>`;
     }
   }

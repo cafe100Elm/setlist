@@ -310,3 +310,50 @@ export function prTimeline() {
     return out.sort((a, b) => b.at - a.at);
   });
 }
+
+// ── Time estimates ──
+// Sets logged as time (cardio, mat, holds) take the time they say; every other
+// set takes this person's own pace, measured from their finished workouts.
+const TIMED = new Set(['c', 'tm', 't']);
+
+// Seconds one ordinary set takes, rest and changeovers included
+export function pace() {
+  return M('pace', () => {
+    const samples = [];
+    for (const w of state.workouts) {
+      if (samples.length >= 40) break;
+      if (!w.end) continue;
+      const dur = (w.end - w.start) / 1000;
+      if (dur < 600 || dur > 10800) continue;
+      let fixed = 0, n = 0;
+      for (const we of w.exercises) {
+        const timed = TIMED.has(exOf(we).type);
+        for (const s of we.sets) if (s.done) { if (timed) fixed += s.t || 0; else n++; }
+      }
+      if (n < 3) continue;
+      const per = (dur - fixed) / n;
+      if (per >= 30 && per <= 600) samples.push(per);
+    }
+    if (samples.length < 5) return { sec: (state.settings.rest || 60) + 50, n: 0 };
+    samples.sort((a, b) => a - b);
+    return { sec: Math.round(samples[Math.floor(samples.length / 2)]), n: samples.length };
+  });
+}
+
+// How long a list of exercises will take. undone: count only sets not yet ticked.
+export function estimate(exercises, { undone = false } = {}) {
+  const p = pace().sec;
+  let sec = 0;
+  for (const e of exercises) {
+    const list = undone ? e.sets.filter((s) => !s.done) : e.sets;
+    if (!list.length) continue;
+    const ex = getEx(e.exId) || exOf(e);
+    if (TIMED.has(ex.type)) {
+      const last = sessions(e.exId)[0];
+      const usual = last ? last.sets.reduce((a, s) => a + (s.t || 0), 0) / last.sets.length : 0;
+      const hold = ex.type === 't';
+      for (const s of list) sec += (s.t || usual || (hold ? 45 : 900)) + (hold ? 30 : 60);
+    } else sec += list.length * p;
+  }
+  return { sec };
+}

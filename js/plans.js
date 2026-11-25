@@ -6,10 +6,13 @@ import { ui, on, onSubmit, render, toast, confirmBox, openSheet, closeSheet, set
 import { PLANS, STARTERS, AGE_SMART } from './lib.js';
 import { esc, fmtDate, dayKey, startOfDay, addDays, plural } from './util.js';
 import { startWorkout, routineFromTemplate } from './workout.js';
+import { estimate } from './stats.js';
+import { approxMin } from './coach.js';
 
 const KIND_NAME = { s: 'Strength', c: 'Cardio', y: 'Mobility', w: 'Walk', r: 'Rest' };
 const tplById = (id) => [...STARTERS, ...AGE_SMART].find((t) => t.id === id);
-const itemMins = (it) => { const t = it.tpl && tplById(it.tpl); return t && t.mins ? t.mins : it.mins || 0; };
+// Minutes for a plan day, at this person's own pace
+const itemMins = (it) => { const t = it.tpl && tplById(it.tpl); return t ? approxMin(estimate(t.exercises).sec) : it.mins || 0; };
 
 export function activePlan() {
   const s = state.settings.plan;
@@ -50,7 +53,7 @@ const summary = (plan) => {
 function flow(plan, todayNo) {
   const nodes = plan.cycle.map((d, i) => `
     <div class="fnode k-${d.kind}${todayNo === i + 1 ? ' now' : ''}">
-      <small>Day ${i + 1}${todayNo === i + 1 ? ' · today' : ''}</small><b>${esc(d.label)}</b><span>${itemMins(d) ? `${itemMins(d)} min` : d.kind === 'r' ? 'Day off' : KIND_NAME[d.kind]}</span>
+      <small>Day ${i + 1}${todayNo === i + 1 ? ' · today' : ''}</small><b>${esc(d.label)}</b><span>${itemMins(d) ? `≈ ${itemMins(d)} min` : d.kind === 'r' ? 'Day off' : KIND_NAME[d.kind]}</span>
     </div>`).join('<i class="farrow" aria-hidden="true">→</i>');
   return `<div class="flow" role="img" aria-label="${esc(plan.cycle.map((d, i) => `Day ${i + 1}: ${d.label}`).join(', '))}, then repeat">${nodes}<i class="farrow" aria-hidden="true">→</i><div class="floop">↻ Back to day 1</div></div>`;
 }
@@ -79,7 +82,7 @@ export function planToday() {
   const m = itemMins(t.item);
   return `<section class="card plan-today k-${t.item.kind}">
     <div class="card-h"><span class="kicker">Today · week ${t.week}, day ${t.day}</span>${link}</div>
-    <div class="row"><div class="grow"><h2>${esc(t.item.label)}</h2><small class="muted">${m ? `${m} min · ` : ''}${esc(ap.plan.name)}</small></div>${done.length ? '<span class="saved">✓ Done today</span>' : goButton(t.item)}</div>
+    <div class="row"><div class="grow"><h2>${esc(t.item.label)}</h2><small class="muted">${m ? `≈ ${m} min · ` : ''}${esc(ap.plan.name)}</small></div>${done.length ? '<span class="saved">✓ Done today</span>' : goButton(t.item)}</div>
     <small class="muted">Tomorrow: ${esc(next.item.label)}</small>
   </section>`;
 }
@@ -109,7 +112,7 @@ function calendar(ap) {
   const t = itemOn(ap.plan, ap.start, sel);
   const logs = logged(sel);
   h += `<div class="cal-detail"><div class="row"><div class="grow"><small>${fmtDate(sel, { weekday: true })}${sel === today ? ' · today' : ''}${t ? ` · week ${t.week}, day ${t.day}` : ''}</small>
-    <b>${t ? esc(t.item.label) : 'Before the plan starts'}</b>${t && itemMins(t.item) ? `<span class="muted"> · ${itemMins(t.item)} min</span>` : ''}</div>
+    <b>${t ? esc(t.item.label) : 'Before the plan starts'}</b>${t && itemMins(t.item) ? `<span class="muted"> · ≈ ${itemMins(t.item)} min</span>` : ''}</div>
     ${t && sel === today && !logs.some((w) => w.end) ? goButton(t.item, 'btn primary sm') : ''}</div>
     ${logs.map((w) => `<button class="link" data-a="open-workout" data-id="${w.id}">✓ Logged: ${esc(w.title)} →</button>`).join('')}</div>`;
   return h;

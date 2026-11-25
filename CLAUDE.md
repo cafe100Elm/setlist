@@ -22,7 +22,8 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 - `index.html` — shell. `css/app.css` — all styling. `sw.js` — offline copy of the app files. `manifest.webmanifest` + `icons/` — install info.
 - `js/store.js` storage · `js/lib.js` exercises, templates, name-guessing · `js/stats.js` every calculation ·
   `js/io.js` import/export · `js/core.js` frame, sheets, number pad, rest timer, theme · `js/workout.js` workout rules ·
-  one file per screen: `home`, `log`, `library` (+ `exercises`, `plans`), `insights`, `history`, `settings` · `js/share.js` · `js/charts.js`.
+  one file per screen: `home`, `log`, `library` (+ `exercises`, `plans`), `insights`, `history`, `settings` · `js/share.js` · `js/charts.js` ·
+  `js/coach.js` (time estimates + what-to-aim-for) · `js/tour.js` (the built-in walkthrough).
 - All paths are relative, so it works from a sub-folder URL (GitHub Pages) as well as a domain root.
 - A workout = `{id, title, notes, start, end, exercises:[{exId, name, sets:[{w, r, t, d, done, kind}]}]}`.
   `w` lb, `r` reps, `t` seconds (cardio shows minutes but stores seconds), `d` miles, `end: null` = in progress.
@@ -32,6 +33,24 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
   templates. Following one saves `settings.plan = { id, start }`; `js/plans.js` draws the flow diagram, the month
   calendar (✓ = a workout was logged that day) and Home's "Today" card. Dates come from day 1, not weekdays.
   "Push back 1 day" just moves `start`. Plans from a person's own routines are not built yet.
+
+## Coach, time estimates, tour (added 2026-11-25)
+- **No AI, on purpose.** Jeremy asked for coaching "with AI if it needs it"; it doesn't. Everything is worked out on
+  the phone from the person's own log, so it works offline, costs nothing and no data leaves the device. A static
+  site also can't hold an API key safely. Only revisit if he asks for free-form advice (the pattern would be Pip's relay).
+- **Time** (`stats.js` `pace()` / `estimate()`): a person's pace = median seconds per ordinary set across their last 40
+  finished workouts (rest and changeovers included; Jeremy's is ~100 s). Timed sets (cardio, Matt, holds) count as the
+  time they say. Under 5 workouts it falls back to rest setting + 50 s. `settings.budget` = session time target in
+  minutes (Jeremy trains M/W/F 6:30 am and wants to finish in 45 including cardio). Routine cards show "≈ N min · fits
+  your 45"; a live workout shows "About N min left · on track for …".
+- **Coach** (`coach.js` `coach()`), per set: reached the usual reps → next weight up; fell short → same weight, one
+  more rep. `settings.coach`: `steady` (default: go up after hitting the reps two sessions running), `fast` (after
+  one), `off`. "Next weight up" = the next heavier weight the person has already used on that exercise (matches their
+  machine), else +2.5 / 5 / 10 by size. Shown as the "Aim" strip in a live workout (Use fills the sets; nothing is
+  changed silently), on the finish sheet ("What to aim for next time") and in exercise details.
+- **Tour** (`tour.js`): ten steps, pictures built from the app's own CSS classes with sample numbers. Opens from
+  Settings → How to use Setlist, and once from a Home card (`settings.tourSeen`). **When a feature changes how the
+  app is used, update the matching tour step in the same change.** Jeremy preferred this over a YouTube video.
 
 ## Gotchas
 - **Adding a JS/CSS/icon file? Add it to the `SHELL` list in `sw.js`** or it won't work offline.

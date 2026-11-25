@@ -471,3 +471,48 @@ h4 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
 .cal-detail .link { text-align: left; white-space: normal; }
 .kdot { width: 10px; height: 10px; border-radius: 3px; background: var(--k); display: inline-block; }
 details.group > summary .tag { vertical-align: 2px; margin-left: 4px; }
+
+/* ── Time estimates + coach ── */
+.chip.time { background: var(--cell); color: var(--ink); }
+.chip.time.fits { background: var(--done-soft); color: var(--done); }
+.chip.time.over { background: var(--accent-soft); color: var(--accent); }
+.eta { font-size: 13.5px; font-weight: 700; color: var(--done); }
+.eta.over { color: var(--accent); }
+.eta:empty { display: none; }
+.coach { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; background: var(--accent-soft); }
+.coach-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: 14px; }
+.coach-t b { font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-right: 5px; }
+.coach-t span { font-weight: 800; }
+.coach-t small { font-size: 12px; color: var(--muted); }
+.coach .btn { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+details.next { text-align: left; }
+details.next summary { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); cursor: pointer; padding: 4px 0; }
+.nx { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+.nx b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.nx span { font-weight: 800; white-space: nowrap; }
+
+/* ── Walkthrough ── */
+.sheet.tour { padding-bottom: calc(12px + var(--safe-b)); }
+.tour-body { gap: 16px; padding-bottom: 8px; }
+.t-art { pointer-events: none; user-select: none; background: var(--bg); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.t-art .card { box-shadow: none; }
+.t-art .btn { pointer-events: none; }
+.t-text { display: flex; flex-direction: column; gap: 8px; padding: 0 4px; }
+.t-text small { font-size: 11.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.t-text h2 { font-size: 23px; }
+.t-text p { font-size: 15.5px; color: var(--muted); }
+.t-text .link { align-self: flex-start; font-size: 14.5px; }
+.tour-nav { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.tour-nav .btn { min-width: 84px; }
+.t-dots { display: flex; gap: 5px; }
+.t-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.t-dots i.on { background: var(--accent); width: 16px; border-radius: 3px; }
+.t-tabs { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px; }
+.t-input { flex: 1; min-height: 44px; display: flex; align-items: center; padding: 0 13px; border-radius: 13px; border: 1px solid var(--line); background: var(--raised); color: var(--muted); font-size: 14.5px; }
+.t-rest { display: flex; align-items: center; gap: 9px; padding: 9px 10px 9px 16px; border-radius: 18px; color: #fff; background: linear-gradient(90deg, #d9400f 78%, #17150f 78%); }
+.t-rest b { font-size: 24px; font-weight: 800; }
+.t-pill { padding: 7px 12px; border-radius: 999px; background: rgba(255, 255, 255, .22); font-weight: 700; font-size: 13.5px; }
+.t-chip { flex: 1; min-height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-weight: 800; font-size: 14px; }
+.t-art .srow { grid-template-columns: 26px minmax(0, 1fr) repeat(var(--n), 60px) 40px; gap: 5px; }
+.t-art .cell { height: 40px; } .t-art .chk { width: 40px; height: 40px; }
+.next-key { font-size: 12px; color: var(--muted); padding-top: 6px; border-top: 1px solid var(--line); }

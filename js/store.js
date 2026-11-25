@@ -12,7 +12,8 @@ export const state = {
   storageOk: true,
 };
 
-const DEFAULTS = { rest: 90, restYoga: 30, sound: true, awake: true, lastBackup: 0, backupNudge: 0 };
+// budget = session time target in minutes (0 = none); coach = off | steady | fast
+const DEFAULTS = { rest: 90, restYoga: 30, sound: true, awake: true, lastBackup: 0, backupNudge: 0, budget: 0, coach: 'steady' };
 const DB_NAME = 'setlist';
 const STORES = ['workouts', 'routines', 'custom'];
 let db = null;

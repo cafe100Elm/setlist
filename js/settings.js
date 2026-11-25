@@ -2,6 +2,8 @@
 import { state, wipe, saveSettings } from './store.js';
 import { ui, on, onChange, openSheet, closeSheet, topSheet, render, go, toast, confirmBox, setSetting, syncWake, icons } from './core.js';
 import { importFile, makeBackup, makeCSV } from './io.js';
+import { paceNote } from './coach.js';
+import { openTour } from './tour.js';
 import { saveFile, shareApp, copyText, appUrl } from './share.js';
 import { esc, num, fmtDate, plural, isIOS, isAndroid, isStandalone, clock } from './util.js';
 
@@ -32,6 +34,8 @@ function body() {
   return `
     <div class="sheet-top"><div class="sheet-head"><h3>Settings &amp; data</h3><button class="btn sm" data-a="sheet-close">Done</button></div></div>
     <div class="sheet-scroll settings">
+      <section><h4>How to use Setlist</h4><p class="muted">A two-minute walkthrough of logging, the coach, time targets, plans and backups.</p><button class="btn primary big" data-a="tour-open">Take the tour</button></section>
+
       <section id="sec-install"><h4>Install on your phone</h4>${installHelp()}</section>
 
       <section><h4>Share Setlist with a friend</h4>
@@ -53,6 +57,10 @@ function body() {
       <section><h4>Preferences</h4>
         <label class="fld inline"><span>Rest after a set</span>${sel('rest', [[0, 'Off'], [30, '0:30'], [45, '0:45'], [60, '1:00'], [90, '1:30'], [120, '2:00'], [180, '3:00']])}</label>
         <label class="fld inline"><span>Rest after yoga / mobility</span>${sel('restYoga', [[0, 'Off'], [15, '0:15'], [30, '0:30'], [60, '1:00']])}</label>
+        <label class="fld inline"><span>Session time target</span>${sel('budget', [[0, 'None'], [20, '20 min'], [30, '30 min'], [45, '45 min'], [60, '60 min'], [75, '75 min'], [90, '90 min']])}</label>
+        <p class="muted small">Routines show whether they fit, and a workout in progress shows whether you're on track. ${paceNote()}</p>
+        <label class="fld inline"><span>Coach</span><select data-c="set-str" data-k="coach">${[['steady', 'Steady'], ['fast', 'Faster'], ['off', 'Off']].map(([v, l]) => `<option value="${v}"${(s.coach || 'steady') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        <p class="muted small">The coach suggests what to aim for on each set. Steady raises the weight after you hit your reps two sessions running; Faster after one.</p>
         ${tog('sound', 'Sound when rest ends', 'Three short beeps (and a buzz on Android)')}
         ${tog('awake', 'Keep the screen on', 'While a workout is in progress')}
       </section>
@@ -72,6 +80,7 @@ export function openSettings(section) {
 const refresh = () => { const s = topSheet(); if (s && s.body.querySelector('.settings')) { const y = s.body.querySelector('.sheet-scroll').scrollTop; s.set(body()); s.body.querySelector('.sheet-scroll').scrollTop = y; } };
 
 on('settings', (el) => openSettings(el.dataset.sec));
+on('tour-open', () => { closeSheet(); openTour(); });
 on('install', async () => {
   if (!installEvent) return;
   installEvent.prompt();
@@ -82,7 +91,8 @@ on('install', async () => {
 on('share-app', () => shareApp());
 on('copy-link', () => copyText(appUrl(), 'Link copied'));
 
-onChange('set', (el) => setSetting(el.dataset.k, +el.value));
+onChange('set', (el) => { setSetting(el.dataset.k, +el.value); render(); });
+onChange('set-str', (el) => { setSetting(el.dataset.k, el.value); render(); });
 onChange('tog', (el) => { setSetting(el.dataset.k, el.checked); syncWake(); });
 
 on('backup', async () => {

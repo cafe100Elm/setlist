@@ -6,6 +6,7 @@ import { exSummary, progress, sessions } from './stats.js';
 import { lineChart } from './charts.js';
 import { esc, num, clock, mins, fmtDate, fmtShort, fmtSets, plural } from './util.js';
 import { addExercise } from './workout.js';
+import { coach } from './coach.js';
 
 const DEFAULT_TYPE = { m: 'wr', f: 'wr', b: 'r', c: 'c', y: 't' };
 
@@ -119,6 +120,7 @@ export function openExercise(id) {
   const prog = progress(id);
   const ss = sessions(id).slice(0, 20);
   const act = activeWorkout();
+  const next = coach(ex, null);
   let chart = '';
   if (prog.length >= 2) {
     const d = prog[prog.length - 1].e - prog[0].e;
@@ -144,6 +146,7 @@ export function openExercise(id) {
       <div class="sheet-scroll">
         ${ex.cue ? `<p class="cue">${esc(ex.cue)}</p>` : ''}
         <div class="figs${figs.length > 3 ? ' four' : ''}">${figs.map(([l, v]) => `<div><b>${esc(v)}</b><span>${l}</span></div>`).join('')}</div>
+        ${next ? `<div class="coach"><div class="coach-t"><span><b>Next time, aim for</b> ${esc(next.text)}</span><small>${esc(next.note)}</small></div></div>` : ''}
         ${chart}
         <div class="sub-h">History</div>
         ${ss.length ? `<ul class="hist-mini">${ss.map((s) => `<li><div><b>${esc(s.w.title)}</b><span>${fmtDate(s.at, { year: true })}</span></div><p>${esc(fmtSets(s.sets))}</p></li>`).join('')}</ul>` : '<p class="empty">Not logged yet. It will show up here after your first set.</p>'}

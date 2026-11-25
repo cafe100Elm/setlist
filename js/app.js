@@ -7,6 +7,7 @@ import './log.js';
 import './library.js';
 import './insights.js';
 import './history.js';
+import './tour.js';
 import { showImportResult } from './settings.js';
 import * as io from './io.js';
 import * as stats from './stats.js';

@@ -7,6 +7,7 @@ import { esc, clock, plural } from './util.js';
 import { startWorkout, routineFromTemplate } from './workout.js';
 import { openPicker, exercisesPanel } from './exercises.js';
 import { plansPanel } from './plans.js';
+import { timeChip } from './coach.js';
 
 const exName = (e) => (getEx(e.exId) || { name: e.name || 'Exercise' }).name;
 
@@ -28,7 +29,7 @@ function tplCard(tpl, rich) {
   return `<div class="card rt">
     ${tpl.tag ? `<i class="tag">${esc(tpl.tag)}</i>` : ''}
     <h3>${esc(tpl.name)}</h3><p class="muted">${esc(tpl.desc)}</p>
-    ${rich ? `<div class="chips">${[`${tpl.mins} min`, tpl.level, tpl.when, tpl.gear].map((c) => `<span class="chip">${esc(c)}</span>`).join('')}</div><p class="why">${esc(tpl.why)}</p>` : ''}
+    <div class="chips">${timeChip(tpl.exercises)}${rich ? [tpl.level, tpl.when, tpl.gear].map((c) => `<span class="chip">${esc(c)}</span>`).join('') : ''}</div>${rich ? `<p class="why">${esc(tpl.why)}</p>` : ''}
     <ul class="rx">${tpl.exercises.map((e) => { const ex = getEx(e.exId); return `<li>${badge(ex.cat)}<span>${esc(ex.name)}</span><b>${prescription(e)}</b></li>`; }).join('')}</ul>
     <div class="row">
       <button class="btn primary grow" data-a="tpl-go" data-id="${tpl.id}">${saved ? 'Start now →' : 'Add & start →'}</button>
@@ -44,6 +45,7 @@ function editor() {
     <label class="fld"><span>Routine name</span><input value="${esc(d.name)}" data-i="draft-name" placeholder="e.g. Upper body A" autocomplete="off"></label>
     <label class="fld"><span>Description <i>optional</i></span><input value="${esc(d.desc)}" data-i="draft-desc" placeholder="e.g. Tuesday and Friday" autocomplete="off"></label>
     <div class="sub-h">Exercises in this routine <span class="muted">${d.exercises.length}</span></div>
+    ${d.exercises.length ? `<div class="chips">${timeChip(d.exercises)}</div>` : ''}
     ${d.exercises.length ? `<div class="draft-list">${d.exercises.map((e, i) => {
     const ex = getEx(e.exId);
     const type = ex ? ex.type : 'wr';
@@ -71,6 +73,7 @@ function routinesPanel() {
   if (state.routines.length) {
     h += state.routines.map((r) => `<div class="card rt">
       <h3>${esc(r.name)}</h3>${r.desc ? `<p class="muted">${esc(r.desc)}</p>` : ''}
+      <div class="chips">${timeChip(r.exercises)}</div>
       <ul class="rx">${r.exercises.map((e) => { const ex = getEx(e.exId); return `<li>${ex ? badge(ex.cat) : ''}<span>${esc(exName(e))}</span><b>${prescription(e)}</b></li>`; }).join('')}</ul>
       <div class="row"><button class="btn primary grow" data-a="routine-start" data-id="${r.id}">Start this routine →</button><button class="btn" data-a="draft-edit" data-id="${r.id}">Edit</button><button class="btn danger-text" data-a="routine-del" data-id="${r.id}">Delete</button></div>
     </div>`).join('');
