@@ -169,6 +169,11 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
 ## Deploy
 - `git push` to `main`. That's all. Check https://cafe100elm.github.io/setlist/ a minute later.
 - Before any commit: `git status` must not list anything from `reference/`.
+- **Don't check the live site until GitHub says the build is done** (`gh api repos/cafe100Elm/setlist/pages/builds/latest`
+  → `status: built` for the new commit). Fetching a file a moment too early makes GitHub's delivery network keep the
+  OLD copy of that file for 10 minutes (a `?x=123` on the address does not get round it, and it can't be cleared by
+  hand), so phones that update in that window could get a mix of old and new files. Happened to `js/sync.js` on
+  2026-11-25; it cleared by itself.
 
 ## Run / test
 - Preview: `.claude/launch.json` → "setlist" (python static server). Or `python3 -m http.server 8817` and open http://localhost:8817.
