@@ -87,6 +87,8 @@ Workouts half of the old Health Dashboard that ran inside Muse. Folder: `~/Proje
   edit replaces the earlier one entirely (it does not blend the two).
 - `js/sync.js`, `js/cloud.js` and `js/firebase-config.js` **must be in `sw.js` `SHELL`**: `app.js` imports them at
   start-up, so if they aren't saved for offline the whole app fails to open without a signal.
+- Published 2026-11-25 (commit 6516c02). Still to confirm on Jeremy's real devices: Google's sign-in window inside
+  the iPad home-screen app, and a real airplane-mode run.
 - Verified 2026-11-25 with two signed-in browser tabs against the real project: new workout, ticked sets, finish,
   edit and delete carried over in seconds; changes made with no connection were sent after reopening; 220 made-up
   workouts imported on both under different ids merged to one set. Test data was then removed from the cloud.
